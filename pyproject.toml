@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "qumof"
 version = "0.2.0"
 description = "Deterministic MOF arrangement/topology ranking pipeline with optional A1/A2/A67 runtime agents"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 # The pipeline core is standard-library Python. These packages run the periodic DFT engine
 # (protocols.dft.engine = "pyscf"): PySCF GPW, DFT-D3/D4 dispersion and ASE relaxations.
 dependencies = [
