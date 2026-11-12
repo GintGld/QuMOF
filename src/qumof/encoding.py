@@ -70,7 +70,7 @@ def count_penalty(constraints: list, weight) -> dict:
 
 def single_flip_bound(poly: dict, variables) -> Fraction:
     """max_i sum_{terms containing i} |c|: no single bit flip changes the polynomial by more than this."""
-    return max((sum(abs(Fraction(c)) for key, c in poly.items() if i in key) for i in variables), default=Fraction(0))
+    return max((sum((abs(Fraction(c)) for key, c in poly.items() if i in key), Fraction(0)) for i in variables), default=Fraction(0))
 
 
 def quadratize(poly: dict, n: int) -> tuple[dict, list]:

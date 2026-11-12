@@ -52,7 +52,7 @@ def acquisition_model(selection: dict) -> dict | None:
     return chosen[0] if chosen else min(done, key=lambda c: (c["cv_rmse_eV"], c["model_id"]), default=None)
 
 
-def _scores(topo, model: dict, pool: list, labelled: list) -> list:
+def _scores(topo, model: dict, pool: list, labelled: list) -> tuple[list, list]:
     names = model["features"]
     coef = [Fraction(c) for c in model["coefficients_exact"]]
     folds = [[Fraction(c) for c in f] for f in model["fold_coefficients_exact"]]
