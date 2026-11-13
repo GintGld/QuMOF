@@ -7,10 +7,11 @@ target rejects it unless the encoding policy asks for explicit quadratization (R
 recorded ancillas and a stated penalty bound). ``compile_one_hot`` encodes slots with more than two species.
 """
 from __future__ import annotations
+from collections.abc import Iterable
 
 from fractions import Fraction
 from itertools import product
-from math import lcm
+from math import lcm, inf
 
 from .configuration_model import feature_polynomial, predict
 from .contract import PipelineError, StageStatus, make_record
@@ -19,7 +20,7 @@ from .structures import n_ones_of
 QUADRATIZATION_REQUIRED = "UNSUPPORTED_HIGHER_ORDER_WITHOUT_QUADRATIZATION"
 
 
-def poly_add(a: dict, b: dict, scale=1) -> dict:
+def poly_add(a: dict, b: dict, scale: Fraction = Fraction(1)) -> dict:
     out = dict(a)
     for k, v in b.items():
         out[k] = out.get(k, 0) + scale * v
@@ -35,6 +36,12 @@ def poly_mul(a: dict, b: dict) -> dict:
     return {k: v for k, v in out.items() if v != 0}
 
 
+def primitive_polynomial(it: Iterable[int], k: int) -> dict[tuple[int] | tuple[()], int]:
+    s: dict[tuple[int] | tuple[()], int] = {(i,): 1 for i in it}
+    s[()] = -k
+    return s
+
+
 def physical_polynomial(hamiltonian: dict, topo) -> dict:
     poly: dict = {}
     for name, c in zip(hamiltonian["features"], hamiltonian["coefficients_exact"]):
@@ -43,8 +50,7 @@ def physical_polynomial(hamiltonian: dict, topo) -> dict:
 
 
 def penalty_polynomial(n: int, k: int, weight) -> dict:
-    s = {(i,): 1 for i in range(n)}
-    s[()] = -k
+    s = primitive_polynomial(range(n), k)
     return {key: Fraction(weight) * v for key, v in poly_mul(s, s).items()}
 
 
@@ -62,8 +68,7 @@ def count_constraints(spec, topo) -> list:
 def count_penalty(constraints: list, weight) -> dict:
     poly: dict = {}
     for sites, k in constraints:
-        s = {(i,): 1 for i in sites}
-        s[()] = -k
+        s = primitive_polynomial(sites, k)
         poly = poly_add(poly, {key: Fraction(weight) * v for key, v in poly_mul(s, s).items()})
     return poly
 
@@ -190,7 +195,7 @@ def verify_encoding(spec, topo, hamiltonian: dict, encoding: dict) -> dict:
     constraints = [(c["sites"], c["k"]) for c in encoding.get("count_constraints") or
                    [{"sites": list(range(topo.n_sites)), "k": n_ones_of(spec, topo)}]]
     ancillas = _ancilla_coefficients(encoding)
-    max_dev, best, argmins = Fraction(0), None, []
+    max_dev, best, argmins = Fraction(0), inf, []
     for bits in product((0, 1), repeat=topo.n_sites):
         violation = sum((sum(bits[i] for i in sites) - k) ** 2 for sites, k in constraints)
         direct = predict(hamiltonian, topo, bits) + weight * violation
@@ -236,8 +241,7 @@ def compile_one_hot(n_sites: int, n_species: int, physical: dict, counts: list, 
     families = [([var(i, a) for a in range(n_species)], 1) for i in range(n_sites)]
     families += [([var(i, a) for i in sites], k) for sites, a, k in counts]
     for members, k in families:
-        s = {(v,): 1 for v in members}
-        s[()] = -k
+        s = primitive_polynomial(members, k)
         penalty = poly_add(penalty, {key: weight * v for key, v in poly_mul(s, s).items()})
     objective = poly_add(poly, penalty)
     return {"target": "QUBO_ONE_HOT", "n_sites": n_sites, "n_species": n_species, "weight_exact": str(weight),
@@ -271,7 +275,7 @@ def verify_one_hot(encoding: dict, physical_energy) -> dict:
     n_vars = encoding["n_sites"] * encoding["n_species"]
     if n_vars > 20:
         return {"status": "UNCERTIFIED", "reason": f"{n_vars} variables exceed the exhaustive limit"}
-    best, argmins, max_dev = None, [], Fraction(0)
+    best, argmins, max_dev = inf, [], Fraction(0)
     for x in product((0, 1), repeat=n_vars):
         e = one_hot_energy(encoding, x)
         decoded = decode_one_hot(encoding, x)
@@ -284,7 +288,7 @@ def verify_one_hot(encoding: dict, physical_energy) -> dict:
     feasible = all(decode_one_hot(encoding, x) is not None for x in argmins)
     return {"status": "COMPLETED" if feasible and max_dev == 0 else "FAILED", "n_states_checked": 2 ** n_vars,
             "max_abs_deviation_exact": str(max_dev), "encoded_minimum_exact": str(best),
-            "minimizers": sorted({decode_one_hot(encoding, x) for x in argmins if decode_one_hot(encoding, x)}),
+            "minimizers": sorted([d for x in argmins if (d := decode_one_hot(encoding, x))]),
             "all_minimizers_feasible": feasible}
 
 

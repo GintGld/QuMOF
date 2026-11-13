@@ -204,7 +204,7 @@ def _scf_object(cell, settings: dict, kmesh):
         mf = smearing(mf, sigma=float(occ["sigma_Ha"]), method=occ["method"])
     elif occ["kind"] != "fixed":
         raise WorkerError("UNSUPPORTED_OCCUPATIONS", str(occ))
-    mf.conv_tol = float(settings["conv_tol_Ha"])
+    mf.conv_tol = float(settings["conv_tol_Ha"]) # pyright: ignore[reportAttributeAccessIssue] # FIXME unknown attribute
     for key, value in settings["numerics"].items():
         if key not in NUMERICAL_KEYS:
             raise WorkerError("PROTOCOL_RETRY_CHANGES_SCIENCE", key)
@@ -279,19 +279,19 @@ class Evaluator:
         kmesh = s["kmesh"]
         mf = _scf_object(cell, s, kmesh)
         dm0 = self.dm_last if self.dm_last is not None else _initial_guess(mf, cell, s)
-        mf.kernel(dm0=dm0)
+        mf.kernel(dm0=dm0) # pyright: ignore[reportAttributeAccessIssue] # FIXME unknown attribute
         self.n_scf += 1
         self.meta = {"nao": int(cell.nao_nr()), "nelectron": int(cell.nelectron), "mesh": [int(x) for x in cell.mesh],
-                     "kmesh": list(kmesh), "spin_2S": int(cell.spin)}
-        if not mf.converged:
-            raise SCFNotConverged(f"SCF not converged after {mf.max_cycle} cycles")
-        self.dm_last = _host(mf.make_rdm1())
-        energies = {"e_tot": float(mf.e_tot)}
+                     "kmesh": list(kmesh), "spin_2S": int(cell.spin)} # pyright: ignore[reportArgumentType] # FIXME unknown attribute
+        if not mf.converged: # pyright: ignore[reportAttributeAccessIssue] # FIXME unknown attribute
+            raise SCFNotConverged(f"SCF not converged after {mf.max_cycle} cycles") # pyright: ignore[reportAttributeAccessIssue] # FIXME unknown attribute
+        self.dm_last = _host(mf.make_rdm1()) # pyright: ignore[reportAttributeAccessIssue] # FIXME unknown attribute
+        energies = {"e_tot": float(mf.e_tot)} # pyright: ignore[reportAttributeAccessIssue] # FIXME unknown attribute
         if s["occupations"]["kind"] == "smearing":
-            energies.update(e_free=float(mf.e_free), e_zero=float(mf.e_zero))
-        grad = _host(mf.Gradients().kernel()) if need_forces or need_stress else None
+            energies.update(e_free=float(mf.e_free), e_zero=float(mf.e_zero)) # pyright: ignore[reportArgumentType] # FIXME unknown attribute
+        grad = _host(mf.Gradients().kernel()) if need_forces or need_stress else None # pyright: ignore[reportAttributeAccessIssue] # FIXME unknown attribute
         if need_stress and s["device"] == "gpu":
-            sigma = _host(mf.Gradients().get_stress())  # gpu4pyscf: multigrid and FFTDF stress on the device
+            sigma = _host(mf.Gradients().get_stress())  # gpu4pyscf: multigrid and FFTDF stress on the device # pyright: ignore[reportAttributeAccessIssue] # FIXME unknown attribute
             sigma = 0.5 * (sigma + sigma.T)
         elif need_stress:
             sigma, delta = _stress_cpu(mf, cell, s, kmesh)
@@ -331,12 +331,12 @@ def _summary(ev: dict) -> dict:
            "max_stress_kbar": None, "pressure_kbar": None}
     if ev["forces_eV_per_A"] is not None:
         forces = numpy.asarray(ev["forces_eV_per_A"])
-        out.update(max_force_eV_per_A=float(numpy.linalg.norm(forces, axis=1).max()) if len(forces) else 0.0,
+        out.update(max_force_eV_per_A=float(numpy.linalg.norm(forces, axis=1).max()) if len(forces) else 0.0, # pyright: ignore[reportArgumentType] # FIXME WTF
                    forces_eV_per_A=forces.tolist())
     if ev["stress_eV_per_A3"] is not None:
         kbar = numpy.asarray(ev["stress_eV_per_A3"]) * EV_PER_A3_TO_KBAR
         out.update(stress_eV_per_A3=numpy.asarray(ev["stress_eV_per_A3"]).tolist(), stress_kbar=kbar.tolist(),
-                   max_stress_kbar=float(abs(kbar).max()), pressure_kbar=float(-numpy.trace(kbar) / 3))
+                   max_stress_kbar=float(abs(kbar).max()), pressure_kbar=float(-numpy.trace(kbar) / 3)) # pyright: ignore[reportArgumentType] # FIXME WTF
     return out
 
 
@@ -358,7 +358,7 @@ def _relax(job: dict, evaluator: Evaluator, log):
 
         def calculate(self, atoms=None, properties=("energy",), system_changes=all_changes):
             super().calculate(atoms, properties, system_changes)
-            ev = evaluator(self.atoms.cell.array, self.atoms.get_chemical_symbols(), self.atoms.positions, variable_cell)
+            ev = evaluator(self.atoms.cell.array, self.atoms.get_chemical_symbols(), self.atoms.positions, variable_cell) # pyright: ignore[reportOptionalMemberAccess] # FIXME None's
             last.clear()
             last.update(ev)
             energy = ev["variational_energy_Ha"] * HARTREE_EV

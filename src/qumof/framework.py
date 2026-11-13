@@ -384,7 +384,7 @@ def build_slot_lattice(parent: dict, topology_id: str, supercell_matrix, chemist
         "errors": [], "structure": struct, "slots": slots, "nodes": parts["nodes"], "node_species": node_species,
         "parent_lattice": parent["lattice"], "symmetry_operations": parent["symmetry_operations"],
         "supercell_diagonal": struct["supercell_diagonal"],
-        "graph": graph, "permutations": perms, "species_counts": counts, "n_formula_units": int(n_fu),
+        "graph": graph, "permutations": perms, "species_counts": counts, "n_formula_units": int(n_fu), # pyright: ignore[reportArgumentType] # `n_fu` checked before
         "target_inventory": dict(sorted(target.items())), "parent_inventory": dict(sorted(parent_inventory.items())),
         "removed_guests": parts.get("removed_guests", []), "net_charge_check": {"total": charge, "assumption": "SUPPLIED_NOT_INFERRED"},
     }

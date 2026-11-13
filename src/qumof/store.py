@@ -72,7 +72,7 @@ class RunStore:
     def stage(self, name: str) -> dict | None:
         return self.state["stages"].get(name)
 
-    def commit_stage(self, name: str, status: str, input_fingerprint: str, artifact_ids: list[str], detail=None):
+    def commit_stage(self, name: str, status: str, input_fingerprint: str, artifact_ids: dict[str,str], detail=None):
         self.state["state_version"] += 1
         self.state["stages"][name] = {"status": status, "input_fingerprint": input_fingerprint,
                                       "artifact_ids": artifact_ids, "detail": detail,

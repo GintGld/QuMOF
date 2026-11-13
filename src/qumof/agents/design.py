@@ -173,6 +173,7 @@ def qaoa_probabilities(packet: dict, poly: dict, reference: set, config: dict) -
                                            x0, 0.3, config["max_evaluations"])
             if best_value is None or value < best_value:
                 best_params, best_value = params, value
+        assert best_params is not None # FIXME validate in another way
         probs = [abs(a) ** 2 for a in evolve(best_params, cost, pairs)]
         runs.append({"seed": seed, "params": [round(p, 6) for p in best_params],
                      "p_ground_state": sum(probs[u] for u in ground), "p_reference": sum(probs[u] for u in ref)})
@@ -317,7 +318,7 @@ def run_one(material: dict, controls, model: str, repeat: int, out_dir: Path, cl
                model_id=meta.get("model"), provider=meta.get("provider"), llm_seconds=round(time.time() - t0, 1))
     row["cost_usd"] = round(sum((u or {}).get("cost") or 0 for u in row["usage"]), 5)
     if validation["status"] == "VALID":
-        row["assessment"] = assess(material, packet, design, qaoa_cfg or DEFAULT_QAOA, qpu, run_dir)
+        row["assessment"] = assess(material, packet, design, qaoa_cfg or DEFAULT_QAOA, qpu, run_dir) # pyright: ignore[reportArgumentType] # FIXME design may be None
     (run_dir / "result.json").write_text(json.dumps(row, indent=2, default=str))
     return row
 

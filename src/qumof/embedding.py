@@ -343,7 +343,7 @@ def assemble_corrected_energy(spec, calc: dict, plan: dict, results: dict, backe
     base = Fraction(calc["base_energy_exact"])
     corrected_fidelity = f"{calc['base_fidelity']}+{backend.fidelity}"
     return make_record("CorrectedEnergy", spec.provenance, **common, correction_status="VALIDATED",
-                       validation_id=validation["artifact_id"], status="SUCCEEDED",
+                       validation_id=validation["artifact_id"], status="SUCCEEDED", # pyright: ignore[reportOptionalSubscript] # `validation` checked before
                        base_energy_exact=str(base), correction_eV_per_fu=float(per_fu), correction_exact=str(per_fu),
                        corrected_energy_eV=float(base + per_fu), corrected_energy_exact=str(base + per_fu),
                        corrected_fidelity=corrected_fidelity,

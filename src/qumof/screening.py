@@ -65,7 +65,7 @@ def _endpoint(spec, topo, species: str) -> dict:
             "inventory": {species: topo.n_sites}, "provenance": spec.provenance}
 
 
-def generate_seed_decorations(spec, topo, sampling: dict) -> dict:
+def generate_seed_decorations(spec, topo, sampling: dict | None) -> dict:
     sampling = {**DEFAULT_SAMPLING, **(sampling or {})}
     reps, sizes = {}, Counter()
     for bits in structures.states_of(spec, topo):
@@ -218,7 +218,7 @@ def screen(spec, store, evaluate) -> tuple[dict, dict]:
     for tid, recs in records.items():
         statuses = Counter(r["status"] for r in recs if r["fixed_composition"])
         evidence = {"seed_statuses": dict(statuses), "min_energy_per_formula_unit_eV": minima[tid],
-                    "gap_to_best_eV_per_formula_unit": None if minima[tid] is None else minima[tid] - best,
+                    "gap_to_best_eV_per_formula_unit": None if minima[tid] is None else minima[tid] - best, # pyright: ignore[reportOptionalOperand] # FIXME checked before
                     "mixing_energies_eV_per_formula_unit": _mixing(recs), "seed_result_ids": [r["artifact_id"] for r in recs]}
         if minima[tid] is None and set(statuses) <= {"BUILD_FAILED", "TRANSFORMED"}:
             state, reason = "reject", "STRUCTURAL_INCOMPATIBILITY: no seed builds or every relaxed seed changes topology"
@@ -226,7 +226,7 @@ def screen(spec, store, evaluate) -> tuple[dict, dict]:
             state, reason = "uncertain", "NO_SUCCESSFUL_RELAXATION: failures are not energies"
         elif energetic and calibrated:
             threshold = energetic["deprioritise_above_eV_per_formula_unit"]
-            margin = threshold + 2 * calibration["mae_eV_per_formula_unit"]
+            margin = threshold + 2 * calibration["mae_eV_per_formula_unit"] # pyright: ignore[reportOptionalSubscript] # FIXME checked before
             gap = evidence["gap_to_best_eV_per_formula_unit"]
             state, reason = (("deprioritise", f"gap {gap:.4f} > {margin:.4f} eV/fu (threshold + 2 x calibration MAE)")
                              if gap > margin else ("uncertain", f"gap {gap:.4f} within the calibration margin")

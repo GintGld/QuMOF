@@ -174,8 +174,8 @@ def main(argv=None) -> int:
                                                                    "n_substitution_sites", "cell")} for a in gen["accepted"]],
                               "rejected": [{k: r.get(k) for k in ("net", "reason", "max_node_rmsd_A", "detail")} for r in gen["rejected"]],
                               "versions": gen["versions"], "cache_key": gen["cache_key"],
-                              "project_errors": [e for e in spec.physical["errors"]]}, indent=2, default=str))
-            return 0 if gen["accepted"] and not spec.physical["errors"] else 1
+                              "project_errors": [e for e in spec.physical["errors"]]}, indent=2, default=str)) # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+            return 0 if gen["accepted"] and not spec.physical["errors"] else 1 # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
         if args.command == "electronic-benchmark":
             from .electronic_solvers import run_electronic_benchmark
             from .store import RunStore

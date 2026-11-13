@@ -19,6 +19,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from aiida.engine.processes.workchains.workchain import WorkChainSpec
 from aiida.engine import WorkChain, calcfunction, while_
 from aiida.orm import Dict, Int, Str
 
@@ -45,13 +46,13 @@ def record_stage(stage: Str, commit: Dict) -> Dict:
 
 class MofPipeWorkChain(WorkChain):
     @classmethod
-    def define(cls, spec):
+    def define(cls, spec: WorkChainSpec):
         super().define(spec)
         spec.input("project", valid_type=Str)
         spec.input("run_dir", valid_type=Str)
         spec.input("case", valid_type=Str, required=False)
         spec.input("correction", valid_type=Str, required=False)
-        spec.outline(cls.setup, while_(cls.has_next_stage)(cls.run_stage), cls.finalize)
+        spec.outline(cls.setup, while_(cls.has_next_stage)(cls.run_stage), cls.finalize) # pyright: ignore[reportArgumentType]
         spec.output_namespace("stages", valid_type=Dict, dynamic=True)
         spec.output("report", valid_type=Dict)
         spec.output("n_stages", valid_type=Int)
@@ -106,7 +107,7 @@ def run_pipeline_aiida(project, run_dir, case=None, correction=None, profile=Non
         inputs["case"] = Str(case)
     if correction:
         inputs["correction"] = Str(correction)
-    _, node = run_get_node(MofPipeWorkChain, **inputs)
+    _, node = run_get_node(MofPipeWorkChain, inputs)
     if not node.is_finished_ok:
         raise PipelineError("AIIDA_WORKCHAIN_FAILED", f"pk={node.pk} exit_status={node.exit_status}")
     report = json.loads((Path(run_dir) / "report.json").read_text())

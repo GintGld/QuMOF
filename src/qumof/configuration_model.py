@@ -361,14 +361,14 @@ def fit_and_select_grouped(spec, topo, train: dict, groups: dict) -> dict:
         base.update(features=eff, dropped_dependent_features=dropped, n_parameters=len(eff),
                     polynomial_degree=max(feature_degree(n) for n in eff))
         try:
-            oof, fold_coefs = [None] * len(entries), []
+            oof, fold_coefs = [], []
             for fold in sorted(set(folds.values())):
                 fit_idx = [i for i, g in enumerate(entry_groups) if folds[g] != fold]
                 coef = ridge_exact([x[i] for i in fit_idx], [y[i] for i in fit_idx], alpha, const)
                 fold_coefs.append([str(c) for c in coef])
                 for i, g in enumerate(entry_groups):
                     if folds[g] == fold:
-                        oof[i] = sum((c * v for c, v in zip(coef, x[i])), Fraction(0))
+                        oof.append( sum((c * v for c, v in zip(coef, x[i])), Fraction(0)) )
             coef = ridge_exact(x, y, alpha, const)
         except PipelineError as exc:
             results.append({**base, "status": StageStatus.FAILED.value, "passes": False, "failure": exc.as_dict()})

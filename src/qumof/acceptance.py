@@ -27,7 +27,7 @@ def check_run(spec, report: dict) -> dict:
     def check(name, ok, detail=""):
         checks.append({"check": name, "passed": bool(ok), "detail": detail})
 
-    check("pipeline_completed", report.get("pipeline_status") == "COMPLETED", report.get("pipeline_status"))
+    check("pipeline_completed", report.get("pipeline_status") == "COMPLETED", report.get("pipeline_status") or '')
     check("no_runtime_agents", report.get("runtime_agents_enabled") is False and report.get("llm_calls") == 0)
     check("winning_topology", report.get("winning_topology") == truth["winning_topology"],
           f"{report.get('winning_topology')} vs {truth['winning_topology']}")

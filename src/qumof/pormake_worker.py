@@ -33,10 +33,10 @@ WORKER_VERSION = "1"  # bump when a change alters the generated structures or ru
 def _quiet():
     logging.disable(logging.CRITICAL)
     try:
-        import pormake as pm
-        pm.log.disable_print()
-    except Exception:
-        pass
+        import pormake.log
+    except ImportError:
+        return
+    pormake.log.disable_print()
 
 
 def _candidate_nets(db, topo_dir: str, cn: int, declared):

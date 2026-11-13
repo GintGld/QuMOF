@@ -139,7 +139,7 @@ def _feature_catalogue(spec, topologies) -> list:
     for n in names:
         prefix = next((p for p in PREFIX_DESCRIPTIONS if n.startswith(p)), None)
         out.append({"feature_id": n, "polynomial_degree": feature_degree(n),
-                    "description": FEATURE_DESCRIPTIONS.get(n) or PREFIX_DESCRIPTIONS.get(prefix, "")})
+                    "description": FEATURE_DESCRIPTIONS.get(n) or PREFIX_DESCRIPTIONS.get(prefix, "") if prefix else ''})
     return out
 
 

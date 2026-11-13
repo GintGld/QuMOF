@@ -86,13 +86,13 @@ def compute(job: dict) -> dict:
             if level.get("dispersion") not in (None, "none"):
                 if level["dispersion"] not in DISPERSION_NAMES:
                     return {"status": "FAILED", "error": {"code": "UNSUPPORTED_DISPERSION", "detail": level["dispersion"]}}
-                mf.disp = DISPERSION_NAMES[level["dispersion"]]
+                mf.disp = DISPERSION_NAMES[level["dispersion"]] # pyright: ignore[reportAttributeAccessIssue] # FIXME why assign disp here if it's impossible?
             mf = _scf(mf, level, job["conv_tol_Ha"])
             energy, converged = mf.kernel(), mf.converged
         else:
             mf = _scf((scf.UHF if open_shell else scf.RHF)(mol), level, job["conv_tol_Ha"])
             energy, converged = mf.kernel(), mf.converged
-            details["hf_energy_Ha"] = float(energy)
+            details["hf_energy_Ha"] = float(energy) # pyright: ignore[reportArgumentType] # FIXME
             if method == "MP2":
                 energy = mp.MP2(mf).run().e_tot
             elif method in ("CCSD", "CCSD(T)"):
@@ -101,7 +101,7 @@ def compute(job: dict) -> dict:
                 mycc.kernel()
                 converged = converged and mycc.converged
                 energy = mycc.e_tot + (mycc.ccsd_t() if method == "CCSD(T)" else 0.0)
-    return {"status": "SUCCEEDED" if converged else "FAILED", "energy_Ha": float(energy), "converged": bool(converged),
+    return {"status": "SUCCEEDED" if converged else "FAILED", "energy_Ha": float(energy), "converged": bool(converged), # pyright: ignore[reportArgumentType] # FIXME
             "error": None if converged else {"code": "NOT_CONVERGED", "detail": method}, "details": details,
             "versions": {"pyscf": pyscf_version, "worker": WORKER_VERSION}, "wall_time_s": round(time.perf_counter() - start, 3)}
 

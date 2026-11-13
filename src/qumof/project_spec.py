@@ -225,9 +225,9 @@ def load_physical_project(project_path: Path, config: dict) -> ProjectSpec:
         errors.append(_err("UNSUPPORTED_SYMMETRY_POLICY", "search.symmetry_policy_id", str(search["symmetry_policy_id"])))
     declared = list(config.get("candidate_topology_ids") or [])
     supplied = [s.get("topology_id") for s in config.get("source_structures") or [] if isinstance(s, dict)]
-    if declared and supplied and sorted(declared) != sorted(supplied):
+    if declared and supplied and sorted(declared) != sorted(supplied): # pyright: ignore[reportArgumentType] # FIXME supplied elements may be None
         errors.append(_err("TOPOLOGY_SOURCE_MISMATCH", "candidate_topology_ids",
-                           f"declared {sorted(declared)}, source structures for {sorted(supplied)}"))
+                           f"declared {sorted(declared)}, source structures for {sorted(supplied)}")) # pyright: ignore[reportArgumentType] # FIXME supplied elements may be None
     if len(set(declared)) != len(declared):
         errors.append(_err("DUPLICATE_TOPOLOGY_ID", "candidate_topology_ids", str(declared)))
 

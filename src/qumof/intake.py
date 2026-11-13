@@ -7,6 +7,7 @@ atomic assembly. Only learner-visible fixture files are read; ``harness/``,
 into the same dataclass, with ``project_type`` kept separate.
 """
 from __future__ import annotations
+from typing import Any
 
 import copy
 import json
@@ -50,7 +51,7 @@ class TopologySpec:
     sublattice_counts: tuple = ()
 
     @classmethod
-    def from_dict(cls, d: dict) -> "TopologySpec":
+    def from_dict(cls, d: dict[str, Any]) -> "TopologySpec":
         try:
             return cls(
                 topology_id=d["topology_id"], representation=d["representation"], n_sites=d["n_sites"],
@@ -61,7 +62,7 @@ class TopologySpec:
                 permutations=tuple(tuple(p) for p in d["symmetry_pullback_permutations"]),
                 n_formula_units=d["normalization"]["n_abstract_formula_units"],
                 crystallographic_net_name=d.get("crystallographic_net_name"),
-                atomic_coordinates=d.get("atomic_coordinates"), provenance=d.get("provenance"),
+                atomic_coordinates=d.get("atomic_coordinates"), provenance=d.get("provenance") or '',
             )
         except (KeyError, TypeError) as exc:
             raise PipelineError("MALFORMED_TOPOLOGY", f"{d.get('topology_id')}: {exc!r}") from exc

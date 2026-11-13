@@ -66,17 +66,20 @@ def prepare_active_space(system: dict, protocol: dict) -> dict:
         mf.kernel()
         if not mf.converged:
             raise PipelineError("SCF_NOT_CONVERGED", system["system_id"])
+        assert mf.mo_energy
         ncas, nelecas = protocol["n_active_orbitals"], protocol["n_active_electrons"]
         chosen = protocol.get("active_orbitals")
         if chosen is not None and (len(set(chosen)) != ncas or not all(type(i) is int and 0 <= i < mol.nao_nr() for i in chosen)):
             raise PipelineError("INVALID_ACTIVE_SPACE", f"active_orbitals {chosen} must be {ncas} distinct MO indices")
         mc = mcscf.CASCI(mf, ncas, nelecas)
+        assert isinstance(mc, mcscf.casci.CASCI)
         if protocol.get("active_orbitals") is not None:  # explicit 0-based MO indices
             mo = mc.sort_mo(protocol["active_orbitals"], base=0)
             selection = sorted(protocol["active_orbitals"])
         else:
             mo = mf.mo_coeff
             selection = list(range(mc.ncore, mc.ncore + ncas))
+        assert isinstance(mo, np.ndarray)
         h1, ecore = mc.get_h1eff(mo)
         h2 = ao2mo.restore(1, mc.get_h2eff(mo), ncas)
     nalpha, nbeta = mc.nelecas

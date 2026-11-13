@@ -35,7 +35,7 @@ def protocol_errors(protocol) -> list:
     """(code, field) pairs for protocols.ml_potential_checkpoint."""
     if not isinstance(protocol, dict):
         return [("SCIENTIFIC_SPEC_MISSING", "protocols.ml_potential_checkpoint")]
-    errors, engine = [], ENGINES.get(protocol.get("engine"))
+    errors, engine = [], ENGINES.get(protocol.get("engine") or '')
     if engine is None:
         return [("UNSUPPORTED_ML_POTENTIAL", f"protocols.ml_potential_checkpoint.engine: {protocol.get('engine')}")]
     if protocol.get("model") not in engine["models"]:
@@ -62,11 +62,12 @@ class MLPotentialBackend:
         physical = spec.physical
         self.spec, self.store = spec, store
         self.protocol = physical["protocols"]["ml_potential_checkpoint"]
-        self.python = _resolve(spec.root, self.protocol.get("python") or sys.executable)
-        self.worker = _resolve(spec.root, self.protocol["worker"]) if self.protocol.get("worker") else str(WORKER)
-        if self.python is None or self.worker is None:
+        python = _resolve(spec.root, self.protocol.get("python") or sys.executable)
+        worker = _resolve(spec.root, self.protocol["worker"]) if self.protocol.get("worker") else str(WORKER)
+        if python is None or worker is None:
             raise PipelineError("BACKEND_UNAVAILABLE", f"ML-potential interpreter/worker not found: "
                                                        f"{self.protocol.get('python')} / {self.protocol.get('worker')}")
+        self.python, self.worker = python, worker
         self.worker_sha256 = hashlib.sha256(Path(self.worker).read_bytes()).hexdigest()
         scientific = {k: v for k, v in self.protocol.items() if k not in ("python", "worker", "timeout_s", "device", "n_threads")}
         self.protocol_hash = content_hash({"protocol": scientific, "worker_sha256": self.worker_sha256})

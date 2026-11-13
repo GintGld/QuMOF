@@ -71,7 +71,7 @@ def replication_report(spec, topo, transfer_topo, mapping: list, features: list,
             "status": StageStatus.COMPLETED.value if not mismatches and not split else "REPLICATION_INCONSISTENT"}
 
 
-def native_states(spec, transfer_topo, mapping: list, n: int, seed) -> list:
+def native_states(spec, transfer_topo, mapping: list | None, n: int, seed) -> list:
     """Seeded feasible transfer-cell states that are not replicas of any working-cell state, one per orbit."""
     rng = random.Random(f"{seed}:{transfer_topo.topology_id}")
     k, size = n_ones_of(spec, transfer_topo), transfer_topo.n_sites

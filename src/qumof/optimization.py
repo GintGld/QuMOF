@@ -24,7 +24,7 @@ def exact_enumeration(spec, topo, hamiltonian: dict, encoding: dict | None = Non
     encoded = _IntPoly(encoding) if encoding is not None else None
     for bits in states_of(spec, topo):
         energy = predict(hamiltonian, topo, bits)
-        if encoded is not None and encoded(complete_assignment(encoding, bits)) != energy:
+        if encoded is not None and encoded(complete_assignment(encoding, bits)) != energy: # pyright: ignore[reportArgumentType] # encoding not None -> encoded not None
             # On feasible states the penalty vanishes, so the encoding must equal the physical energy.
             raise PipelineError("ENCODING_DECODE_MISMATCH", f"{topo.topology_id}:{bit_string(bits)}")
         table.append((bit_string(bits), energy))
@@ -146,6 +146,7 @@ def branch_and_bound(spec, topo, hamiltonian: dict, node_limit: int = 1_000_000,
         stack.append((depth + 1, ones))              # x_depth = 0 explored second
         stack.append((depth + 1, ones | 1 << depth))  # x_depth = 1 explored first
     open_bounds = [b for b in (bound(d, o) for d, o in stack) if b is not None] if limit_hit else []
+    assert best is not None # FIXME maybe do something with algorithm to guarantee that `best` is not None
     lower = min([best] + open_bounds)
     to_ev = lambda v: Fraction(v, scale * max_deg)  # noqa: E731
     bits = [best_bits >> i & 1 for i in range(n)]
