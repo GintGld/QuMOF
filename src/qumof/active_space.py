@@ -66,7 +66,7 @@ def prepare_active_space(system: dict, protocol: dict) -> dict:
         mf.kernel()
         if not mf.converged:
             raise PipelineError("SCF_NOT_CONVERGED", system["system_id"])
-        assert mf.mo_energy
+        assert mf.mo_energy is not None
         ncas, nelecas = protocol["n_active_orbitals"], protocol["n_active_electrons"]
         chosen = protocol.get("active_orbitals")
         if chosen is not None and (len(set(chosen)) != ncas or not all(type(i) is int and 0 <= i < mol.nao_nr() for i in chosen)):

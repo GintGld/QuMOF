@@ -288,7 +288,7 @@ def verify_one_hot(encoding: dict, physical_energy) -> dict:
     feasible = all(decode_one_hot(encoding, x) is not None for x in argmins)
     return {"status": "COMPLETED" if feasible and max_dev == 0 else "FAILED", "n_states_checked": 2 ** n_vars,
             "max_abs_deviation_exact": str(max_dev), "encoded_minimum_exact": str(best),
-            "minimizers": sorted([d for x in argmins if (d := decode_one_hot(encoding, x))]),
+            "minimizers": sorted({d for x in argmins if (d := decode_one_hot(encoding, x))}),
             "all_minimizers_feasible": feasible}
 
 
