@@ -27,6 +27,14 @@ def cif_number(token: str) -> float:
         raise PipelineError("CIF_PARSE_ERROR", f"not a number: {token!r}")
     return float(match.group(1))
 
+
+def _leading(pattern: str, text: str, what: str) -> str:
+    """The match of ``pattern`` at the start of ``text``; CIF_PARSE_ERROR when there is none."""
+    match = re.match(pattern, text)
+    if not match:
+        raise PipelineError("CIF_PARSE_ERROR", f"no {what} in {text!r}")
+    return match.group(0)
+
 # Tokenized string
 Token: TypeAlias = list[str]
 
@@ -167,8 +175,8 @@ def parse_cif(text: str, source: str) -> dict:
     asym = []
     for row in rows:
         label = get(row, "_atom_site_label")
-        element = get(row, "_atom_site_type_symbol") or re.match(r"[A-Za-z]+", label or "").group(0)  # pyright: ignore[reportOptionalMemberAccess]  # FIXME no element in the label -> AttributeError; should raise CIF_PARSE_ERROR (small helper)
-        element = re.match(r"[A-Z][a-z]?", element.strip().capitalize()).group(0)  # pyright: ignore[reportOptionalMemberAccess]  # FIXME same as above
+        element = get(row, "_atom_site_type_symbol") or _leading(r"[A-Za-z]+", label or "", "element in atom-site label")
+        element = _leading(r"[A-Z][a-z]?", element.strip().capitalize(), "element symbol")
         occ_raw = get(row, "_atom_site_occupancy", "1")
         occupancy = 1.0 if occ_raw in ("?", ".") else cif_number(occ_raw)
         group = get(row, "_atom_site_disorder_group", ".")

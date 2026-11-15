@@ -41,6 +41,15 @@ def _text(value):
     return None if value is None or (isinstance(value, float) and math.isnan(value)) else str(value)
 
 
+def _h5_array(h, key: str):
+    """The whole HDF5 dataset ``key`` as an array (``h[key]`` may also be a Group or a Datatype)."""
+    import h5py
+    dataset = h[key]
+    if not isinstance(dataset, h5py.Dataset):
+        raise ValueError(f"{h.filename}: {key} is not an HDF5 dataset")
+    return dataset[:]
+
+
 def _topology(row: dict, columns: dict):
     if columns.get("topology") and _text(row.get(columns["topology"])):
         label = (_text(row[columns["topology"]]) or "").lower()
@@ -78,10 +87,10 @@ class ReferenceDataset:
             import h5py
             index = pd.read_parquet(Path(self.cfg["index"]).expanduser())
             with h5py.File(Path(self.cfg["hdf5"]).expanduser()) as h:
-                ptr, num, z = h["ptr"][:], h["num_atoms"][:], h["z"][:]  # pyright: ignore[reportIndexIssue]  # FIXME h5py File[...] is Group | Dataset | Datatype: read through a helper that asserts h5py.Dataset
-                props = {q: h[f"properties/{name}"][:] for name, (q, _) in QUANTITIES.items() if f"properties/{name}" in h}  # pyright: ignore[reportIndexIssue]  # FIXME same h5py typing as above
+                ptr, num, z = _h5_array(h, "ptr"), _h5_array(h, "num_atoms"), _h5_array(h, "z")
+                props = {q: _h5_array(h, f"properties/{name}") for name, (q, _) in QUANTITIES.items() if f"properties/{name}" in h}
             from ase.data import chemical_symbols
-            elements = [{chemical_symbols[int(a)] for a in set(z[p:p + n].tolist())} for p, n in zip(ptr, num)]  # pyright: ignore[reportIndexIssue, reportAttributeAccessIssue, reportArgumentType]  # FIXME h5py typing (see above)
+            elements = [{chemical_symbols[int(a)] for a in set(z[p:p + n].tolist())} for p, n in zip(ptr, num)]
         else:
             path = Path(self.cfg["path"]).expanduser()
             reader = {".csv": pd.read_csv, ".parquet": pd.read_parquet, ".jsonl": lambda p: pd.read_json(p, lines=True)}
@@ -94,7 +103,7 @@ class ReferenceDataset:
             metals = set(re.findall(r"[A-Z][a-z]?", _text(row.get(cols.get("metals", ""))) or "")) or (els & METALS)
             out.append({"row_id": _text(row.get(cols.get("record_id", ""))) or str(i), "name": _text(row.get(cols.get("name", ""))),
                         "doi": _text(row.get(cols.get("doi", ""))), "topology": _topology(row, cols), "metals": metals,
-                        "elements": els, "values": {q: float(v[i]) for q, v in props.items() if not math.isnan(float(v[i]))}})  # pyright: ignore[reportIndexIssue, reportArgumentType]  # FIXME h5py typing (see above)
+                        "elements": els, "values": {q: float(v[i]) for q, v in props.items() if not math.isnan(float(v[i]))}})
         return out
 
 
