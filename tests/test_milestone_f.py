@@ -78,7 +78,8 @@ def test_store_rejects_a_concurrent_writer(tmp_path):
     first.commit_stage("intake", "COMPLETED", "fp", {}, {})
     with pytest.raises(PipelineError, match="STATE_VERSION_CONFLICT"):
         second.commit_stage("intake", "FAILED", "fp", {}, {})
-    assert RunStore(tmp_path / "run").stage("intake")["status"] == "COMPLETED"
+    stage = RunStore(tmp_path / "run").stage("intake")
+    assert stage is not None and stage["status"] == "COMPLETED"
 
 
 def _venv_has(*modules):

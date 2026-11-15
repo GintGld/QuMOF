@@ -72,7 +72,7 @@ class Relaxer:
         from ase.filters import FrechetCellFilter
         from ase.optimize import FIRE
         atoms.calc = self.calc
-        opt = FIRE(FrechetCellFilter(atoms), logfile=str(logfile), maxstep=0.1)
+        opt = FIRE(FrechetCellFilter(atoms), logfile=str(logfile), maxstep=0.1)  # pyright: ignore[reportArgumentType]  # ase types Optimizer(atoms: Atoms); filters are accepted at runtime
         converged = bool(opt.run(fmax=fmax, steps=steps))
         return {"energy_eV": float(atoms.get_potential_energy()), "converged": converged, "n_steps": int(opt.nsteps),
                 "max_force_eV_per_A": float(np.linalg.norm(atoms.get_forces(), axis=1).max()),
@@ -82,7 +82,7 @@ class Relaxer:
 def zn4o_cluster(atoms) -> dict:
     """Zn4O(HCO2)6 cut from one Zn4O node: mu4-O, the 6 carboxylates, ring carbons replaced by H at 1.09 A."""
     from ase.neighborlist import NeighborList, natural_cutoffs
-    nl = NeighborList(natural_cutoffs(atoms, mult=1.15), self_interaction=False, bothways=True)
+    nl = NeighborList(natural_cutoffs(atoms, mult=1.15), self_interaction=False, bothways=True)  # pyright: ignore[reportArgumentType]  # ase annotates mult as int; it is a float scale factor
     nl.update(atoms)
     sym = atoms.get_chemical_symbols()
     zn = [i for i, s in enumerate(sym) if s == "Zn"]

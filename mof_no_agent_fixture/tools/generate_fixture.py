@@ -119,7 +119,7 @@ def main():
             for topo in topologies:
                 name=topo["topology_id"]
                 minima[name]=float(min(energy(topo,b,case)+correction(name,b,mode,topo) for b in feasible_states()))
-            correction_summaries[mode]={"minima_eV":minima,"winning_topology":min(minima,key=minima.get)}
+            correction_summaries[mode]={"minima_eV":minima,"winning_topology":min(minima,key=lambda t:minima[t])}
         gold[case]={"topologies":summary,"expected_selected_model":"M1_two_shell_pairs" if case=="core_pairwise" else "M2_pairs_and_triplets",
                     "correction_tests":correction_summaries}
     write_jsonl(ROOT/"data/candidates_unlabelled.jsonl",candidates)

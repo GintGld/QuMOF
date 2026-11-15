@@ -206,6 +206,7 @@ def test_a1_selects_topologies_from_the_brief_and_the_pipeline_analyses_only_tho
     assert list(report["topologies"]) == ["ring12"] and report["agent_layer"]["excluded_topologies"][0]["framework_id"] == "prism6"
     assert {t["topology_id"] for t in json.loads(client.requests[1]["messages"][1]["content"])["topologies"]} == {"ring12"}
     # Silent omission, contradicted facts and scope exclusions against policy are rejected (no repair budget).
+    ctl: dict  # control overrides only; never case/correction
     for proposal, ctl, code in ((a1(("ring12",)), {}, "OMITTED_FRAMEWORK"),
                                 (a1(("ring12",), excluded=[("prism6", "COMPOSITION_INFEASIBLE")]), {}, "EXCLUSION_CONTRADICTS_FACTS"),
                                 (a1(("ring12",), excluded=[("prism6", "OUT_OF_BRIEF_SCOPE")]),

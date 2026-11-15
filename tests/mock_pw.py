@@ -29,13 +29,13 @@ def main():
     if "crash" in modes:
         sys.exit("mock pw.x: simulated crash")
     calc = namelist_value(text, "calculation")
-    ecut = float(namelist_value(text, "ecutwfc"))
+    ecut = float(namelist_value(text, "ecutwfc", ""))  # missing key -> ValueError
     beta = float(namelist_value(text, "mixing_beta", "0.7"))
     lines = text.splitlines()
     i = lines.index("CELL_PARAMETERS angstrom")
     lattice = [[float(x) for x in lines[i + k].split()] for k in (1, 2, 3)]
     j = lines.index("ATOMIC_POSITIONS angstrom")
-    nat = int(namelist_value(text, "nat"))
+    nat = int(namelist_value(text, "nat", ""))  # missing key -> ValueError
     atoms = [(l.split()[0], [float(x) for x in l.split()[1:4]]) for l in lines[j + 1:j + 1 + nat]]
 
     out = ["     Program PWSCF v.7.2 starts on  1Jan2026 at  0: 0: 0", "     SYNTHETIC MOCK - not a DFT calculation", ""]

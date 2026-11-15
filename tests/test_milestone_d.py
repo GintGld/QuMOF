@@ -64,7 +64,7 @@ def test_penalty_bound_sublattice_counts_and_one_hot():
         optimization.branch_and_bound(spec, split_topo, ham)
     # One-hot: 4 slots on a ring, 3 species with counts 2/1/1, nearest-neighbour like-species penalty.
     ring = [(0, 1), (1, 2), (2, 3), (3, 0)]
-    physical = {((i, a), (j, a)): "0.1" for i, j in ring for a in range(3)}
+    physical: dict[tuple, str] = {((i, a), (j, a)): "0.1" for i, j in ring for a in range(3)}
     physical.update({((0, 2),): "-0.05"})
     counts = [(range(4), 0, 2), (range(4), 1, 1), (range(4), 2, 1)]
     one_hot = encoding.compile_one_hot(4, 3, physical, counts, 1.0)
@@ -106,7 +106,7 @@ def test_qaoa_mixers_preserve_constraints_and_bit_order_errors_are_caught():
     spec, hams = _hamiltonians("core_pairwise")
     topo = spec.topologies["ring12"]
     enc = encoding.compile_encoding(spec, topo, hams["ring12"], "QUBO")
-    swap = {0: 2, 2: 0}  # a bit-order mistake: sites 0 and 2 exchanged in the compiled couplings (not a symmetry)
+    swap: dict = {0: 2, 2: 0}  # a bit-order mistake: sites 0 and 2 exchanged in the compiled couplings (not a symmetry)
     mislabelled = {**enc, "quadratic_eV": [{**q, "i": min(swap.get(q["i"], q["i"]), swap.get(q["j"], q["j"])),
                                            "j": max(swap.get(q["i"], q["i"]), swap.get(q["j"], q["j"]))}
                                           for q in enc["quadratic_eV"]]}
