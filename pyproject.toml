@@ -37,6 +37,7 @@ aiida = ["aiida-core>=2.6"]
 [dependency-groups]
 dev = [
     "pyright>=1.1.414",
+    "pytest-xdist>=3.8.0",
 ]
 
 [tool.setuptools.packages.find]
