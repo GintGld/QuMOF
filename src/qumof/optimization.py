@@ -24,7 +24,7 @@ def exact_enumeration(spec, topo, hamiltonian: dict, encoding: dict | None = Non
     encoded = _IntPoly(encoding) if encoding is not None else None
     for bits in states_of(spec, topo):
         energy = predict(hamiltonian, topo, bits)
-        if encoded is not None and encoded(complete_assignment(encoding, bits)) != energy: # pyright: ignore[reportArgumentType] # encoding not None -> encoded not None
+        if encoding is not None and encoded is not None and encoded(complete_assignment(encoding, bits)) != energy:
             # On feasible states the penalty vanishes, so the encoding must equal the physical energy.
             raise PipelineError("ENCODING_DECODE_MISMATCH", f"{topo.topology_id}:{bit_string(bits)}")
         table.append((bit_string(bits), energy))

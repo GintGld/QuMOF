@@ -386,7 +386,8 @@ def dft_protocol_errors(protocol: dict, root: Path, elements: set, lattices=()) 
             err("SCIENTIFIC_SPEC_MISSING", key)
     if errors:
         return errors
-    adapter = adapter_cls() # pyright: ignore[reportOptionalCall] # checked before, pylance can't see
+    assert adapter_cls is not None  # "engine" is in COMMON_REQUIRED, so a missing engine returned above
+    adapter = adapter_cls()
     if protocol["zero_smearing_convention"] not in adapter.conventions:
         err("UNSUPPORTED_ENERGY_CONVENTION", "zero_smearing_convention",
             f"{protocol['zero_smearing_convention']} (engine supports {list(adapter.conventions)})")

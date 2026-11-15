@@ -135,12 +135,12 @@ class AgentRun:
         except AgentCallError as exc:
             return self._stop(exc.code, exc.detail)
         if v["status"] != "VALID":
-            return self._stop(f"A1_{v['status']}", v.get("errors") or v.get("error_codes") + v.get("missing_input_ids")) # pyright: ignore[reportOptionalOperand] # FIXME add types
+            return self._stop(f"A1_{v['status']}", v.get("errors") or v.get("error_codes", []) + v.get("missing_input_ids", []))
         return {"setup": {"plans": v["plans"], "excluded": v["excluded"]}}
 
     def node_screen(self, state: AgentState) -> dict:
         """Construction checks and topology screening, then stop: A2 answers for the topologies screening kept."""
-        out = run_pipeline(self.agent_spec(state["setup"], None), self.run_dir / "pipeline", stop_after="screening") # pyright: ignore[reportArgumentType] # FIXME is it ok grid is None?
+        out = run_pipeline(self.agent_spec(state["setup"], None), self.run_dir / "pipeline", stop_after="screening")
         report = out.get("screening")
         if out["stage_status"].get("screening") != "COMPLETED" or not report:
             failed = {k: v for k, v in out["stage_status"].items() if v not in ("COMPLETED", "SKIPPED_NO_ATOMIC_GEOMETRY")}
@@ -168,10 +168,10 @@ class AgentRun:
         except AgentCallError as exc:
             return self._stop(exc.code, exc.detail)
         if v["status"] != "VALID":
-            return self._stop(f"A2_{v['status']}", v.get("errors") or v.get("error_codes") + v.get("missing_input_ids")) # pyright: ignore[reportOptionalOperand] # FIXME add types
+            return self._stop(f"A2_{v['status']}", v.get("errors") or v.get("error_codes", []) + v.get("missing_input_ids", []))
         return {"model_grid": v["model_grid"]}
 
-    def agent_spec(self, setup: dict, grid: dict):
+    def agent_spec(self, setup: dict, grid: dict | None):
         """The project as the pipeline sees it: agents enabled, validated plans and model grid attached."""
         runtime = {"enabled": True, "llm_calls_allowed": True, "roles": list(self.controls.roles),
                    "max_llm_requests": self.controls.max_llm_requests,
@@ -343,7 +343,7 @@ class AgentRun:
 
     def run(self, engine: str = "auto") -> dict:
         graph, used = build_graph(self.nodes(), self.routes(), engine)
-        graph.invoke(AgentState()) # type: ignore # FIXME what's happening here?
+        graph.invoke({})  # pyright: ignore[reportArgumentType]  # empty AgentState. FIXME langgraph wants AgentState, the sequential fallback a dict: give both engines one protocol
         summary = json.loads((self.run_dir / "agent_run.json").read_text())
         summary["engine"] = used
         (self.run_dir / "agent_run.json").write_text(json.dumps(summary, indent=2, default=str) + "\n")

@@ -318,7 +318,8 @@ def run_one(material: dict, controls, model: str, repeat: int, out_dir: Path, cl
                model_id=meta.get("model"), provider=meta.get("provider"), llm_seconds=round(time.time() - t0, 1))
     row["cost_usd"] = round(sum((u or {}).get("cost") or 0 for u in row["usage"]), 5)
     if validation["status"] == "VALID":
-        row["assessment"] = assess(material, packet, design, qaoa_cfg or DEFAULT_QAOA, qpu, run_dir) # pyright: ignore[reportArgumentType] # FIXME design may be None
+        assert design is not None  # a VALID validation always carries a design
+        row["assessment"] = assess(material, packet, design, qaoa_cfg or DEFAULT_QAOA, qpu, run_dir)
     (run_dir / "result.json").write_text(json.dumps(row, indent=2, default=str))
     return row
 

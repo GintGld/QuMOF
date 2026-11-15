@@ -15,6 +15,7 @@ import json
 import math
 import re
 from collections import Counter
+from datetime import timedelta
 from pathlib import Path
 
 from ..intake import FIXTURE_PROJECT_TYPE
@@ -107,7 +108,7 @@ class ValencyMCP:
                     await session.initialize()
                     for name, arguments in calls:
                         try:
-                            result = await session.call_tool(name, arguments, read_timeout_seconds=self.timeout) # pyright: ignore[reportArgumentType] # FIXME convert float into timedelta
+                            result = await session.call_tool(name, arguments, read_timeout_seconds=timedelta(seconds=self.timeout))
                             out.append(_parse_tool_result(result))
                         except Exception as exc:  # one failed call is a retrieval gap, not a run failure
                             out.append(exc)

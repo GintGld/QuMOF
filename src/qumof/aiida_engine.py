@@ -52,7 +52,7 @@ class MofPipeWorkChain(WorkChain):
         spec.input("run_dir", valid_type=Str)
         spec.input("case", valid_type=Str, required=False)
         spec.input("correction", valid_type=Str, required=False)
-        spec.outline(cls.setup, while_(cls.has_next_stage)(cls.run_stage), cls.finalize) # pyright: ignore[reportArgumentType]
+        spec.outline(cls.setup, while_(cls.has_next_stage)(cls.run_stage), cls.finalize)  # pyright: ignore[reportArgumentType]  # aiida types outline steps as Callable[[WorkChain], ...]; subclass methods never match
         spec.output_namespace("stages", valid_type=Dict, dynamic=True)
         spec.output("report", valid_type=Dict)
         spec.output("n_stages", valid_type=Int)

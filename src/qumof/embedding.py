@@ -340,10 +340,11 @@ def assemble_corrected_energy(spec, calc: dict, plan: dict, results: dict, backe
         return make_record("EmbeddingBenchmarkResult", spec.provenance, **common, correction_status="UNVALIDATED",
                            unvalidated_correction_eV_per_fu=float(per_fu), unvalidated_correction_exact=str(per_fu),
                            note="benchmark artifact only: not applied to any energy or ranking")
+    assert validation is not None  # implied by `validated`
     base = Fraction(calc["base_energy_exact"])
     corrected_fidelity = f"{calc['base_fidelity']}+{backend.fidelity}"
     return make_record("CorrectedEnergy", spec.provenance, **common, correction_status="VALIDATED",
-                       validation_id=validation["artifact_id"], status="SUCCEEDED", # pyright: ignore[reportOptionalSubscript] # `validation` checked before
+                       validation_id=validation["artifact_id"], status="SUCCEEDED",
                        base_energy_exact=str(base), correction_eV_per_fu=float(per_fu), correction_exact=str(per_fu),
                        corrected_energy_eV=float(base + per_fu), corrected_energy_exact=str(base + per_fu),
                        corrected_fidelity=corrected_fidelity,

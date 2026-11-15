@@ -50,6 +50,12 @@ class Pipeline:
             self._backend = backend_cls(self.spec, self.store)
         return self._backend
 
+    @property
+    def physical_spec(self) -> dict:
+        """``spec.physical`` of a physical project; only the _physical_* stages read it."""
+        assert self.spec.physical is not None, "physical stage run on a fixture project"
+        return self.spec.physical
+
     def _stage_inputs(self, name: str) -> dict:
         """Inputs a stage reads besides its upstream: the A2 model grid enters only the fitting stages, so an agent
         run reuses intake, construction and screening when A2 answers after screening (agents/runner.py)."""
@@ -146,7 +152,7 @@ class Pipeline:
 
     def _physical_screening(self):
         """Task 02: ML-potential screen when protocols.ml_potential_checkpoint is declared; identity otherwise."""
-        if not self.spec.physical["protocols"].get("ml_potential_checkpoint"): # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        if not self.physical_spec["protocols"].get("ml_potential_checkpoint"):
             return self._stage_screening()
         arts, detail = screening.screen(self.spec, self.store,
                                         lambda topo, decos: self._evaluate_decorations(topo, decos, "ml_calibration"))
@@ -307,8 +313,8 @@ class Pipeline:
     def _physical_structures(self):
         spec, arts = self.spec, {}
         detail = {"symmetry": {}, "swap_reachability": {}, "atomic_construction": {}, "supercell_replication": {},
-                  "cluster_catalogue": {s["topology_id"]: s.get("cluster_catalogue") for s in spec.physical["sources"]}} # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
-        transfers = spec.physical.get("transfer_topologies") or {} # pyright: ignore[reportOptionalMemberAccess] # FIXME `spec.physical` may be None
+                  "cluster_catalogue": {s["topology_id"]: s.get("cluster_catalogue") for s in self.physical_spec["sources"]}}
+        transfers = self.physical_spec.get("transfer_topologies") or {}
         for tid, topo in spec.topologies.items():
             space = arts[f"space/{tid}"] = structures.define_decoration_space(spec, topo)
             states = list(structures.states_of(spec, topo))
@@ -317,7 +323,7 @@ class Pipeline:
             detail["swap_reachability"][tid] = structures.swap_graph_connected(topo, topo.n_sites,
                                                                                structures.n_ones_of(spec, topo))
             # Rebuild the known parent (every slot keeps its parent linker) and compare with the parsed supercell.
-            lattice = spec.physical["lattices"][tid] # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+            lattice = self.physical_spec["lattices"][tid]
             parent = {"configuration_id": f"{tid}:parent", "orbit_id": f"{tid}:parent", "topology_id": tid,
                       "species_by_slot": [s["parent_species"] for s in lattice["slots"]]}
             rebuilt = framework.build_framework(spec, topo, parent)
@@ -336,7 +342,7 @@ class Pipeline:
             # Exact replication test (no DFT): replicated configurations keep their features and orbit identity.
             reports = []
             for cell in transfers.get(tid, []):
-                mapping = transfer.slot_map(lattice, spec.physical["lattices"][cell.topology_id]) # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+                mapping = transfer.slot_map(lattice, self.physical_spec["lattices"][cell.topology_id])
                 if mapping is None:
                     reports.append({"transfer_topology_id": cell.topology_id, "status": "NOT_A_REPLICA_CELL"})
                     continue
@@ -371,8 +377,8 @@ class Pipeline:
 
     def _geometry_classes(self, tid, results) -> dict:
         """T05.1: orbits whose relaxed structures are equivalent under the parent symmetry share one class."""
-        lattice = self.spec.physical["lattices"][tid] # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
-        tol = (self.spec.physical["protocols"].get("validation") or {}).get("geometry_equivalence_tolerance_A") # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        lattice = self.physical_spec["lattices"][tid]
+        tol = (self.physical_spec["protocols"].get("validation") or {}).get("geometry_equivalence_tolerance_A")
         items = [(r["decoration"]["orbit_id"], r["selected"]["relaxed_geometry"], r["selected"]["magnetic_state"].get("label"))
                  for r in results if r["status"] == "SUCCEEDED"]
         if tol is None:  # undeclared tolerance: only identical relaxed geometries are grouped (Milestone B rule)
@@ -459,13 +465,13 @@ class Pipeline:
     def _physical_refinement(self):
         """T08: rounds of declared acquisition + DFT labels until the stopping rules decide (never past the budget)."""
         spec = self.spec
-        physical = spec.physical
-        stopping = physical["protocols"].get("stopping") # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        physical = self.physical_spec
+        stopping = physical["protocols"].get("stopping")
         if not stopping:
             return StageOutcome(StageStatus.DISABLED_BY_CONFIG, detail={"mode": "protocols.stopping is null"})
-        tol = Fraction(str(physical["tolerances"]["target_relative_energy_tolerance"])) # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
-        required = physical["tolerances"]["consecutive_stable_rounds"] # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
-        k = physical["protocols"]["acquisition"]["top_k_unique_orbits_per_topology"] # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        tol = Fraction(str(physical["tolerances"]["target_relative_energy_tolerance"]))
+        required = physical["tolerances"]["consecutive_stable_rounds"]
+        k = physical["protocols"]["acquisition"]["top_k_unique_orbits_per_topology"]
         labels = self.detail["labels"]
         train, split = self.ctx["train"], self.ctx["split"]
         groups = dict(labels["cv_groups"])
@@ -571,10 +577,10 @@ class Pipeline:
             entries = [e for e in self.ctx["train"]["entries"] if e["topology_id"] == tid]
             preds = [configuration_model.predict(ham, topo, e["bits"]) for e in entries]
             labels = [Fraction(e["energy_exact"]) for e in entries]
-            tol = Fraction(str(self.spec.physical["tolerances"]["target_relative_energy_tolerance"])) # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+            tol = Fraction(str(self.physical_spec["tolerances"]["target_relative_energy_tolerance"]))
             best = min(range(len(entries)), key=lambda i: (preds[i], i))
             detail.setdefault("labelled_ground_state_recovered", {})[tid] = labels[best] <= min(labels) + tol
-        policy = (self.spec.physical["protocols"].get("model_selection") or {}).get("on_inadequate", "halt") # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        policy = (self.physical_spec["protocols"].get("model_selection") or {}).get("on_inadequate", "halt")
         fitted = [t for t in self.spec.topologies if t not in {f["topology_id"] for f in failed}]
         if failed and policy == "drop_topology" and fitted:
             # The failing topologies leave the search with their reports; the ranking can no longer cover every
@@ -589,20 +595,21 @@ class Pipeline:
     def _physical_supercell_checks(self):
         """T01.5: DFT replication consistency and native transfer-cell predictions of each working-cell model."""
         spec = self.spec
-        transfers = spec.physical.get("transfer_topologies") or {} # pyright: ignore[reportOptionalMemberAccess] # FIXME `spec.physical` may be None
+        transfers = self.physical_spec.get("transfer_topologies") or {}
         if not any(transfers.values()):
             return StageOutcome(StageStatus.DISABLED_BY_CONFIG, detail={"reason": "no transfer supercells declared"})
-        policy = (spec.physical["protocols"].get("validation") or {}).get("supercell_transfer") or {} # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        policy = (self.physical_spec["protocols"].get("validation") or {}).get("supercell_transfer") or {}
         arts, detail, statuses = {}, {}, []
         for tid, cells in transfers.items():
             topo, ham = spec.topologies[tid], self.ctx[f"hamiltonian/{tid}"]
             entries = sorted((e for e in self.ctx["train"]["entries"] if e["topology_id"] == tid),
                              key=lambda e: (Fraction(e["energy_exact"]), e["orbit_id"]))
             for cell in cells:
-                mapping = transfer.slot_map(spec.physical["lattices"][tid], spec.physical["lattices"][cell.topology_id]) # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+                mapping = transfer.slot_map(self.physical_spec["lattices"][tid], self.physical_spec["lattices"][cell.topology_id])
                 replicated = []
                 for entry in entries[:policy["n_replicated"]] if mapping is not None else []:
-                    t_bits = transfer.replicate(entry["bits"], mapping) # pyright: ignore[reportArgumentType] # FIXME mapping might be None
+                    assert mapping is not None  # the loop is empty otherwise
+                    t_bits = transfer.replicate(entry["bits"], mapping)
                     records, res = self._evaluate_decorations(cell, [t_bits], "supercell_replication")
                     arts.update(records)
                     working = self.ctx[f"dftcalc/{entry['calculation_result_id']}"]
@@ -658,7 +665,7 @@ class Pipeline:
     def _physical_embedding(self):
         """T07.3: finite-cluster subtractive corrections. A blocked or UNVALIDATED correction never stops the
         DFT-only ranking, so this stage does not halt the run."""
-        if not self.spec.physical["protocols"].get("embedding"): # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        if not self.physical_spec["protocols"].get("embedding"):
             return StageOutcome(StageStatus.DISABLED_BY_CONFIG, detail={"ranking": "DFT-only"})
         pool = [(row, self.ctx[f"calc/{row['orbit_id']}"]) for tid in self.spec.topologies
                 for row in self.ctx[f"pool/{tid}"]["pool"]]
@@ -691,10 +698,10 @@ class Pipeline:
     def _reference_phases(self):
         """T09.2 reference set 'pure_endpoints': every slot of every topology holding one linker species."""
         spec = self.spec
-        species = list(next(iter(spec.physical["chemistry"]["composition_by_sublattice"].values()))) # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        species = list(next(iter(self.physical_spec["chemistry"]["composition_by_sublattice"].values())))
         arts, refs, missing = {}, [], []
         for tid, topo in spec.topologies.items():
-            n = len(spec.physical["lattices"][tid]["slots"]) # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+            n = len(self.physical_spec["lattices"][tid]["slots"])
             for sp in species:
                 rid = f"{tid}:reference:{sp}"
                 decoration = {"configuration_id": rid, "orbit_id": rid, "topology_id": tid, "bits": None,
@@ -714,12 +721,12 @@ class Pipeline:
     def _physical_ranking(self):
         pool_rows = [row for tid in self.spec.topologies for row in self.ctx[f"pool/{tid}"]["pool"]]
         results = [v for k, v in self.ctx.items() if k.startswith("calc/")]
-        tol = Fraction(str(self.spec.physical["tolerances"]["target_relative_energy_tolerance"])) # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        tol = Fraction(str(self.physical_spec["tolerances"]["target_relative_energy_tolerance"]))
         base = ranking.rank_candidates(self.spec, pool_rows, results, "base", tie_tolerance=tol)
         classes = {}
         for per_topology in (self.detail.get("evaluation") or {}).get("relaxed_geometry_classes", {}).values():
             classes.update(per_topology)
-        validation_policy = self.spec.physical["protocols"].get("validation") or {} # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+        validation_policy = self.physical_spec["protocols"].get("validation") or {}
         arts = {"ranking/base": base}
         if validation_policy.get("reference_phases") == "pure_endpoints":
             ref_arts, refs, missing = self._reference_phases()

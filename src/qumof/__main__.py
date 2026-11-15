@@ -167,15 +167,16 @@ def main(argv=None) -> int:
             return _agents(args)
         if args.command == "generate-topologies":
             spec = load_project(args.project)
-            gen = (spec.physical or {}).get("topology_generation")
+            physical = spec.physical or {}
+            gen = physical.get("topology_generation")
             if gen is None:
                 raise PipelineError("SCIENTIFIC_SPEC_MISSING", "protocols.topology_generation")
             print(json.dumps({"accepted": [{k: a.get(k) for k in ("net", "max_node_rmsd_A", "n_nodes", "n_edges", "supercell_matrix",
                                                                    "n_substitution_sites", "cell")} for a in gen["accepted"]],
                               "rejected": [{k: r.get(k) for k in ("net", "reason", "max_node_rmsd_A", "detail")} for r in gen["rejected"]],
                               "versions": gen["versions"], "cache_key": gen["cache_key"],
-                              "project_errors": [e for e in spec.physical["errors"]]}, indent=2, default=str)) # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
-            return 0 if gen["accepted"] and not spec.physical["errors"] else 1 # pyright: ignore[reportOptionalSubscript] # FIXME `spec.physical` may be None
+                              "project_errors": [e for e in physical["errors"]]}, indent=2, default=str))
+            return 0 if gen["accepted"] and not physical["errors"] else 1
         if args.command == "electronic-benchmark":
             from .electronic_solvers import run_electronic_benchmark
             from .store import RunStore

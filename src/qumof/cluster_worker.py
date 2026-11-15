@@ -22,6 +22,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 WORKER_VERSION = "3"  # bump when a change alters the computed quantities (part of the embedding fidelity)
 DISPERSION_NAMES = {"grimme-d3": "d3zero", "d3zero": "d3zero", "d3bj": "d3bj", "d4": "d4"}
@@ -47,6 +48,7 @@ def compute(job: dict) -> dict:
         mol = gto.M(atom=[[e, tuple(r)] for e, r in zip(job["elements"], job["coords_A"])], unit="Angstrom",
                     basis=job["basis"], ecp=job.get("ecp") or {}, charge=job["charge"], spin=job["spin"], verbose=0)
         open_shell = job["spin"] != 0
+        mf: Any  # pyscf SCF objects are composed at runtime (newton(), disp, ...); pyright misreads their attributes
         details = {"n_ao": mol.nao_nr(), "n_electrons": int(mol.nelectron), "reference": "U" if open_shell else "R"}
         if method == "active_space":
             sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -86,13 +88,13 @@ def compute(job: dict) -> dict:
             if level.get("dispersion") not in (None, "none"):
                 if level["dispersion"] not in DISPERSION_NAMES:
                     return {"status": "FAILED", "error": {"code": "UNSUPPORTED_DISPERSION", "detail": level["dispersion"]}}
-                mf.disp = DISPERSION_NAMES[level["dispersion"]] # pyright: ignore[reportAttributeAccessIssue] # FIXME why assign disp here if it's impossible?
+                mf.disp = DISPERSION_NAMES[level["dispersion"]]
             mf = _scf(mf, level, job["conv_tol_Ha"])
             energy, converged = mf.kernel(), mf.converged
         else:
             mf = _scf((scf.UHF if open_shell else scf.RHF)(mol), level, job["conv_tol_Ha"])
             energy, converged = mf.kernel(), mf.converged
-            details["hf_energy_Ha"] = float(energy) # pyright: ignore[reportArgumentType] # FIXME
+            details["hf_energy_Ha"] = float(energy)
             if method == "MP2":
                 energy = mp.MP2(mf).run().e_tot
             elif method in ("CCSD", "CCSD(T)"):
@@ -101,7 +103,7 @@ def compute(job: dict) -> dict:
                 mycc.kernel()
                 converged = converged and mycc.converged
                 energy = mycc.e_tot + (mycc.ccsd_t() if method == "CCSD(T)" else 0.0)
-    return {"status": "SUCCEEDED" if converged else "FAILED", "energy_Ha": float(energy), "converged": bool(converged), # pyright: ignore[reportArgumentType] # FIXME
+    return {"status": "SUCCEEDED" if converged else "FAILED", "energy_Ha": float(energy), "converged": bool(converged),
             "error": None if converged else {"code": "NOT_CONVERGED", "detail": method}, "details": details,
             "versions": {"pyscf": pyscf_version, "worker": WORKER_VERSION}, "wall_time_s": round(time.perf_counter() - start, 3)}
 

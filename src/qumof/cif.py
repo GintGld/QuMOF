@@ -167,12 +167,12 @@ def parse_cif(text: str, source: str) -> dict:
     asym = []
     for row in rows:
         label = get(row, "_atom_site_label")
-        element = get(row, "_atom_site_type_symbol") or re.match(r"[A-Za-z]+", label or "").group(0) # pyright: ignore[reportOptionalMemberAccess] # FIXME re.match returns Match[str] | None
-        element = re.match(r"[A-Z][a-z]?", element.strip().capitalize()).group(0) # pyright: ignore[reportOptionalMemberAccess] # FIXME re.match returns Match[str] | None
+        element = get(row, "_atom_site_type_symbol") or re.match(r"[A-Za-z]+", label or "").group(0)  # pyright: ignore[reportOptionalMemberAccess]  # FIXME no element in the label -> AttributeError; should raise CIF_PARSE_ERROR (small helper)
+        element = re.match(r"[A-Z][a-z]?", element.strip().capitalize()).group(0)  # pyright: ignore[reportOptionalMemberAccess]  # FIXME same as above
         occ_raw = get(row, "_atom_site_occupancy", "1")
         occupancy = 1.0 if occ_raw in ("?", ".") else cif_number(occ_raw)
         group = get(row, "_atom_site_disorder_group", ".")
-        frac = tuple(cif_number(get(row, f"_atom_site_fract_{k}")) for k in "xyz") # pyright: ignore[reportArgumentType] # FIXME re.match returns Match[str] | None
+        frac = tuple(cif_number(get(row, f"_atom_site_fract_{k}", "")) for k in "xyz")  # missing column -> CIF_PARSE_ERROR
         asym.append({"label": label, "element": element, "frac": frac, "occupancy": occupancy,
                      "disorder_group": group if group not in ("?",) else "."})
 
