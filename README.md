@@ -53,7 +53,7 @@ The QuMOF agentic pipeline successfully automates the discovery and optimization
 
 ## Quick start
 
-You only need Python 3.10 or newer. No other packages are required for this step.
+You only need Python 3.12. No other packages are required for this step.
 
 ```bash
 PYTHONPATH=src python3 -m qumof matrix --project mof_no_agent_fixture/project.json --out runs
@@ -65,12 +65,10 @@ correction modes) and checks each run against the answer. It takes a few seconds
 
 ## Installation
 
-Python 3.10 or newer is required. On Linux:
+Python 3.12 only, use UV package manager. On Linux:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[test]"        # core package + PySCF, pyscf-dispersion, ASE, pytest
+uv sync # Only required dependencies
 ```
 
 Install the optional extras you need:
@@ -85,28 +83,9 @@ Install the optional extras you need:
 | `gpu` | DFT on a GPU (untested) | gpu4pyscf-cuda12x |
 
 ```bash
-pip install -e ".[agents,mlip,qpu]"
-
-# AiiDA only: create a local profile once (no database server or broker needed)
-pip install -e ".[aiida]"
+uv sync --all-extras [--no-extra gpu] # All dependencies
 AIIDA_PATH=$PWD/.aiida verdi presto --profile-name qumof
 ```
-
-The package still imports without the extras. Each optional component loads only when it is used. `orb-models` needs
-Python 3.13 or older; if your main interpreter is newer, install it into a separate environment and point
-`protocols.ml_potential_checkpoint.python` in the project file at it.
-
-> [!NOTE]
-> **macOS on Apple silicon:** `pyscf-dispersion` has no wheel for this platform, so a plain `pip install -e .` fails.
-> Install the package with `--no-deps`, then add the dependencies yourself, leaving out `pyscf-dispersion`:
->
-> ```bash
-> pip install -e . --no-deps
-> pip install "pyscf>=2.14" "ase>=3.23" pytest
-> ```
->
-> Do the same for an extra: register it with `pip install -e ".[agents]" --no-deps`, then install the packages it lists
-> in [pyproject.toml](pyproject.toml). Without `pyscf-dispersion`, DFT-D3/D4 dispersion corrections are unavailable.
 
 ## Usage
 
