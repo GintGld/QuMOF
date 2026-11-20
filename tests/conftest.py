@@ -29,7 +29,7 @@ def fixture_core():
     tools = str(FIXTURE / "tools")
     if tools not in sys.path:
         sys.path.insert(0, tools)
-    import fixture_core as fc
+    import fixture_core as fc  # pyright: ignore[reportMissingImports]  # on sys.path only at runtime (inserted above)
     return fc
 
 

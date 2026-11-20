@@ -6,6 +6,7 @@ disorder instead of resolving them silently. The original text and its SHA-256
 are kept with every parse.
 """
 from __future__ import annotations
+from typing import TypeAlias
 
 import hashlib
 import math
@@ -27,14 +28,26 @@ def cif_number(token: str) -> float:
     return float(match.group(1))
 
 
-def _tokens(line: str) -> list:
+def _leading(pattern: str, text: str, what: str) -> str:
+    """The match of ``pattern`` at the start of ``text``; CIF_PARSE_ERROR when there is none."""
+    match = re.match(pattern, text)
+    if not match:
+        raise PipelineError("CIF_PARSE_ERROR", f"no {what} in {text!r}")
+    return match.group(0)
+
+# Tokenized string
+Token: TypeAlias = list[str]
+
+def _tokens(line: str) -> list[str]:
     try:
         return shlex.split(line, posix=True)
     except ValueError as exc:
         raise PipelineError("CIF_PARSE_ERROR", f"{line!r}: {exc}") from exc
 
+# Any element of the list is (column names, rows of tokens)
+Loop: TypeAlias = tuple[list[str], list[Token]]
 
-def _parse_items(text: str) -> tuple[dict, list]:
+def _parse_items(text: str) -> tuple[dict, list[Loop]]:
     """Return (scalar items, loops). Loops are (column names, rows of tokens)."""
     items, loops = {}, []
     lines = [l for l in text.splitlines() if l.strip() and not l.lstrip().startswith("#")]
@@ -82,7 +95,7 @@ def _parse_items(text: str) -> tuple[dict, list]:
     return items, loops
 
 
-def _loop_with(loops, name):
+def _loop_with(loops: list[Loop], name: str) -> tuple[list[str] | None, list[Token]]:
     for names, rows in loops:
         if name in names:
             return names, rows
@@ -145,7 +158,7 @@ def parse_cif(text: str, source: str) -> dict:
     except KeyError as exc:
         raise PipelineError("CIF_PARSE_ERROR", f"missing cell parameter {exc}") from exc
     names, rows = _loop_with(loops, "_atom_site_fract_x")
-    if not rows:
+    if not names or not rows:
         raise PipelineError("CIF_PARSE_ERROR", "no _atom_site_fract_x loop")
     col = {n: names.index(n) for n in names}
 
@@ -153,21 +166,21 @@ def parse_cif(text: str, source: str) -> dict:
         return row[col[key]] if key in col else default
 
     sym_names, sym_rows = _loop_with(loops, "_space_group_symop_operation_xyz")
-    if not sym_rows:
+    if not sym_names or not sym_rows:
         sym_names, sym_rows = _loop_with(loops, "_symmetry_equiv_pos_as_xyz")
     key = "_space_group_symop_operation_xyz" if "_space_group_symop_operation_xyz" in (sym_names or []) \
         else "_symmetry_equiv_pos_as_xyz"
-    ops = [parse_symop(r[sym_names.index(key)]) for r in sym_rows] if sym_rows else [parse_symop("x,y,z")]
+    ops = [parse_symop(r[sym_names.index(key)]) for r in sym_rows] if sym_rows and sym_names else [parse_symop("x,y,z")]
 
     asym = []
     for row in rows:
         label = get(row, "_atom_site_label")
-        element = get(row, "_atom_site_type_symbol") or re.match(r"[A-Za-z]+", label or "").group(0)
-        element = re.match(r"[A-Z][a-z]?", element.strip().capitalize()).group(0)
+        element = get(row, "_atom_site_type_symbol") or _leading(r"[A-Za-z]+", label or "", "element in atom-site label")
+        element = _leading(r"[A-Z][a-z]?", element.strip().capitalize(), "element symbol")
         occ_raw = get(row, "_atom_site_occupancy", "1")
         occupancy = 1.0 if occ_raw in ("?", ".") else cif_number(occ_raw)
         group = get(row, "_atom_site_disorder_group", ".")
-        frac = tuple(cif_number(get(row, f"_atom_site_fract_{k}")) for k in "xyz")
+        frac = tuple(cif_number(get(row, f"_atom_site_fract_{k}", "")) for k in "xyz")  # missing column -> CIF_PARSE_ERROR
         asym.append({"label": label, "element": element, "frac": frac, "occupancy": occupancy,
                      "disorder_group": group if group not in ("?",) else "."})
 

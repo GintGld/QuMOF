@@ -380,6 +380,7 @@ def build_slot_lattice(parent: dict, topology_id: str, supercell_matrix, chemist
         fail("CHARGE_IMBALANCE", f"supplied formal charges sum to {charge}, expected {expected_charge}")
     if errors:
         return {"errors": errors}
+    assert n_fu is not None  # otherwise INVENTORY_MISMATCH returned above
     return {
         "errors": [], "structure": struct, "slots": slots, "nodes": parts["nodes"], "node_species": node_species,
         "parent_lattice": parent["lattice"], "symmetry_operations": parent["symmetry_operations"],

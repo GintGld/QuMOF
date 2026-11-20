@@ -113,6 +113,7 @@ def test_protocol_may_be_a_registry_file(tmp_path):
         spec["protocols"]["builder"] = "protocols/builder.json"
     spec = toy(tmp_path, mutate=mutate)
     assert validate_project(spec)["status"] == "COMPLETED"
+    assert spec.physical is not None
     assert spec.physical["protocols"]["builder"]["builder_id"] == "parent_substitution_v1"
 
 
@@ -131,6 +132,7 @@ def test_cif_parse_expands_symmetry_and_keeps_provenance():
 def test_known_parent_gives_checked_slot_lattice(tmp_path):
     spec = toy(tmp_path)
     topo = spec.topologies["toy_pcu"]
+    assert spec.physical is not None
     source = spec.physical["sources"][0]
     assert (topo.n_sites, source["n_nodes"], topo.n_formula_units) == (12, 4, 2)
     assert spec.composition_counts == {"L": 6, "LN": 6} and spec.species_encoding == {"L": 0, "LN": 1}
@@ -147,6 +149,7 @@ def test_slot_mapping_stable_under_atom_reordering(tmp_path):
     reference = toy(tmp_path / "a")
     shuffled = toy(tmp_path / "b", cif_text=toy_cif(shuffle=True))
     # Same structure written in P1 with a random atom order.
+    assert reference.physical is not None
     lattice = reference.physical["lattices"]["toy_pcu"]["structure"]
     parent = parse_cif(toy_cif(), "t")
     order = list(range(len(parent["atoms"])))
@@ -156,6 +159,7 @@ def test_slot_mapping_stable_under_atom_reordering(tmp_path):
     reordered = toy(tmp_path / "c", cif_text=p1)
     for other in (shuffled, reordered):
         a, b = reference.topologies["toy_pcu"], other.topologies["toy_pcu"]
+        assert other.physical is not None
         assert (a.pairs_d1, a.pair_weights_d1, a.pairs_d2, a.triplets) == (b.pairs_d1, b.pair_weights_d1, b.pairs_d2, b.triplets)
         assert [s["centroid_frac"] for s in reference.physical["lattices"]["toy_pcu"]["slots"]] == \
             [s["centroid_frac"] for s in other.physical["lattices"]["toy_pcu"]["slots"]]
@@ -193,6 +197,7 @@ def test_unbound_guest_removed_only_under_declared_policy(tmp_path):
     spec = toy(tmp_path, cif_text=toy_cif(extra_atoms=[("Ow", "O", 0.5, 0.5, 0.5, 1.0)]),
                overrides={"chemistry": {"solvent_and_counterion_policy": "remove_unbound_guests"}})
     assert validate_project(spec)["status"] == "COMPLETED"
+    assert spec.physical is not None
     assert spec.physical["sources"][0]["removed_guests"] == [{"O": 1}] * 4
 
 

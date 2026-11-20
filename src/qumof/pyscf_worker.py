@@ -25,6 +25,7 @@ import json
 import sys
 import time
 import traceback
+from typing import Any
 
 WORKER_VERSION = "1"  # bump when a change alters the computed quantities (part of the DFT fidelity)
 HARTREE_EV = 27.211386245988  # CODATA 2018
@@ -185,6 +186,7 @@ def _scf_object(cell, settings: dict, kmesh):
     from pyscf.pbc import dft
     open_shell = settings["magnetic_state"]["nspin"] == 2
     scheme, gpu = settings["integral_scheme"], settings["device"] == "gpu"
+    mf: Any  # pyscf builds the smearing/GPU SCF classes at runtime; pyright cannot see their attributes
     if scheme == "multigrid":
         if list(kmesh) != [1, 1, 1]:
             raise WorkerError("UNSUPPORTED_KPOINTS_FOR_MULTIGRID", f"kmesh {kmesh}")
@@ -282,7 +284,7 @@ class Evaluator:
         mf.kernel(dm0=dm0)
         self.n_scf += 1
         self.meta = {"nao": int(cell.nao_nr()), "nelectron": int(cell.nelectron), "mesh": [int(x) for x in cell.mesh],
-                     "kmesh": list(kmesh), "spin_2S": int(cell.spin)}
+                     "kmesh": list(kmesh), "spin_2S": int(cell.spin)}  # pyright: ignore[reportArgumentType]  # pyscf types Cell.spin as Optional; build() always sets it
         if not mf.converged:
             raise SCFNotConverged(f"SCF not converged after {mf.max_cycle} cycles")
         self.dm_last = _host(mf.make_rdm1())
@@ -327,7 +329,7 @@ def reported_energy(energies: dict, convention: str) -> float:
 
 def _summary(ev: dict) -> dict:
     import numpy
-    out = {"max_force_eV_per_A": None, "forces_eV_per_A": None, "stress_eV_per_A3": None, "stress_kbar": None,
+    out: dict[str, Any] = {"max_force_eV_per_A": None, "forces_eV_per_A": None, "stress_eV_per_A3": None, "stress_kbar": None,
            "max_stress_kbar": None, "pressure_kbar": None}
     if ev["forces_eV_per_A"] is not None:
         forces = numpy.asarray(ev["forces_eV_per_A"])
@@ -358,6 +360,7 @@ def _relax(job: dict, evaluator: Evaluator, log):
 
         def calculate(self, atoms=None, properties=("energy",), system_changes=all_changes):
             super().calculate(atoms, properties, system_changes)
+            assert self.atoms is not None  # set by Calculator.calculate
             ev = evaluator(self.atoms.cell.array, self.atoms.get_chemical_symbols(), self.atoms.positions, variable_cell)
             last.clear()
             last.update(ev)

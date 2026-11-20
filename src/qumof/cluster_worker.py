@@ -22,6 +22,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 WORKER_VERSION = "3"  # bump when a change alters the computed quantities (part of the embedding fidelity)
 DISPERSION_NAMES = {"grimme-d3": "d3zero", "d3zero": "d3zero", "d3bj": "d3bj", "d4": "d4"}
@@ -47,6 +48,7 @@ def compute(job: dict) -> dict:
         mol = gto.M(atom=[[e, tuple(r)] for e, r in zip(job["elements"], job["coords_A"])], unit="Angstrom",
                     basis=job["basis"], ecp=job.get("ecp") or {}, charge=job["charge"], spin=job["spin"], verbose=0)
         open_shell = job["spin"] != 0
+        mf: Any  # pyscf SCF objects are composed at runtime (newton(), disp, ...); pyright misreads their attributes
         details = {"n_ao": mol.nao_nr(), "n_electrons": int(mol.nelectron), "reference": "U" if open_shell else "R"}
         if method == "active_space":
             sys.path.insert(0, str(Path(__file__).resolve().parents[1]))

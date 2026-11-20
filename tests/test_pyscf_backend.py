@@ -67,6 +67,7 @@ def test_worker_energy_equals_direct_pyscf_plus_d3(tmp_path):
     mf = pbcdft.RKS(cell, xc="PBE").multigrid_numint()
     mf.conv_tol = 1e-10
     e_dft = mf.kernel()
+    assert e_dft is not None
     e_d3 = float(dftd3.DFTD3Dispersion(cell, "pbe", version="d3bj").get_dispersion()["energy"])
     assert abs(float(result["total_energy_Ha"]) - (e_dft + e_d3)) < 1e-7
     assert abs(result["energies_Ha"]["e_disp"] - e_d3) < 1e-12
@@ -191,6 +192,7 @@ def test_engine_identity_is_part_of_the_fidelity(tmp_path):
     assert identity["versions"]["pyscf"] and identity["versions"]["pyscf_dispersion"]
     assert set(identity["data_hashes"]["basis"]) == {"Al", "C", "F", "H", "O"}
     physical = spec.physical
+    assert physical is not None
     other = dft.protocol_fingerprint(backend.protocol, physical["chemistry"]["magnetic_state_policy"], backend.tolerances,
                                      {**identity, "versions": {**identity["versions"], "pyscf": "0.0"}})
     assert other != backend.protocol_hash and backend.fidelity.endswith(backend.protocol_hash[:12])

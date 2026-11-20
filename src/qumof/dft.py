@@ -15,6 +15,7 @@ only on relaxed geometries, residual stress only after a variable-cell relaxatio
 ``relaxation.calculation = "scf"`` (rigid builder geometries), which is recorded on every result.
 """
 from __future__ import annotations
+from typing import Any
 
 import hashlib
 import json
@@ -345,7 +346,7 @@ class PySCFAdapter:
         return path.read_text() if path.exists() else ""
 
     def parse_output(self, text: str, calculation: str, input_geometry: dict) -> dict:
-        result = json.loads(text) if text.strip() else {"job_done": False}
+        result: dict[str, Any] = json.loads(text) if text.strip() else {"job_done": False}
         final = result.get("final_geometry") or {}
         return {
             "job_done": bool(result.get("job_done")), "error": result.get("error"),
@@ -376,7 +377,7 @@ def dft_protocol_errors(protocol: dict, root: Path, elements: set, lattices=()) 
     def err(code, path, detail=""):
         errors.append({"code": code, "check": f"protocols.dft.{path}", "detail": detail})
 
-    adapter_cls = ADAPTERS.get(protocol.get("engine"))
+    adapter_cls = ADAPTERS.get(protocol.get("engine") or '')
     if protocol.get("engine") is not None and adapter_cls is None:
         err("UNSUPPORTED_DFT_ENGINE", "engine", f"{protocol['engine']} (supported: {sorted(ADAPTERS)})")
         return errors
@@ -385,6 +386,7 @@ def dft_protocol_errors(protocol: dict, root: Path, elements: set, lattices=()) 
             err("SCIENTIFIC_SPEC_MISSING", key)
     if errors:
         return errors
+    assert adapter_cls is not None  # "engine" is in COMMON_REQUIRED, so a missing engine returned above
     adapter = adapter_cls()
     if protocol["zero_smearing_convention"] not in adapter.conventions:
         err("UNSUPPORTED_ENERGY_CONVENTION", "zero_smearing_convention",

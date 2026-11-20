@@ -63,8 +63,8 @@ def test_assembly_blocks_missing_terms_incomplete_coverage_foreign_geometry_and_
     assert Fraction(out["unvalidated_correction_exact"]) == 4 * delta * embedding.HARTREE_TO_EV / plan["n_formula_units"]
     assert out["record_type"] == "EmbeddingBenchmarkResult"  # no validation report -> never a corrected energy
 
-    def code(*args, **kwargs):
-        return embedding.assemble_corrected_energy(spec, *args, backend, **kwargs)["failure"]["code"]
+    def code(calc, plan, results, **kwargs):
+        return embedding.assemble_corrected_energy(spec, calc, plan, results, backend, **kwargs)["failure"]["code"]
     assert code(calc, plan, {h: {"high": pair["high"]}}) == "MISSING_SUBTRACTION_TERM"
     assert code(calc, plan, {h: {"low": pair["low"]}}) == "MISSING_HIGH_LEVEL_TERM"
     three = {**plan, "clusters": {h: {**plan["clusters"][h], "multiplicity": 3, "nodes": plan["clusters"][h]["nodes"][:3]}}}

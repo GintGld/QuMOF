@@ -41,9 +41,18 @@ def _text(value):
     return None if value is None or (isinstance(value, float) and math.isnan(value)) else str(value)
 
 
+def _h5_array(h, key: str):
+    """The whole HDF5 dataset ``key`` as an array (``h[key]`` may also be a Group or a Datatype)."""
+    import h5py
+    dataset = h[key]
+    if not isinstance(dataset, h5py.Dataset):
+        raise ValueError(f"{h.filename}: {key} is not an HDF5 dataset")
+    return dataset[:]
+
+
 def _topology(row: dict, columns: dict):
     if columns.get("topology") and _text(row.get(columns["topology"])):
-        label = _text(row[columns["topology"]]).lower()
+        label = (_text(row[columns["topology"]]) or "").lower()
         return None if label in ("unstable", "unnamed", "unknown", "error", "nan", "none", "") else label
     match = MOFID_TOPOLOGY.search(_text(row.get(columns.get("mofid", ""))) or "")
     return match.group(1).lower() if match and match.group(1).upper() not in ("ERROR", "UNKNOWN", "NA") else None
@@ -78,8 +87,8 @@ class ReferenceDataset:
             import h5py
             index = pd.read_parquet(Path(self.cfg["index"]).expanduser())
             with h5py.File(Path(self.cfg["hdf5"]).expanduser()) as h:
-                ptr, num, z = h["ptr"][:], h["num_atoms"][:], h["z"][:]
-                props = {q: h[f"properties/{name}"][:] for name, (q, _) in QUANTITIES.items() if f"properties/{name}" in h}
+                ptr, num, z = _h5_array(h, "ptr"), _h5_array(h, "num_atoms"), _h5_array(h, "z")
+                props = {q: _h5_array(h, f"properties/{name}") for name, (q, _) in QUANTITIES.items() if f"properties/{name}" in h}
             from ase.data import chemical_symbols
             elements = [{chemical_symbols[int(a)] for a in set(z[p:p + n].tolist())} for p, n in zip(ptr, num)]
         else:
@@ -199,7 +208,7 @@ def fetch(cfg: dict) -> list:
     from huggingface_hub import hf_hub_download
 
     hf = cfg["hf"]
-    target = Path(cfg.get("index") or cfg.get("path")).expanduser().parent
+    target = Path(cfg.get("index") or cfg["path"]).expanduser().parent
     out = []
     for name in hf["files"]:
         path = Path(hf_hub_download(hf["repo"], name, repo_type="dataset", revision=hf["revision"], local_dir=target))

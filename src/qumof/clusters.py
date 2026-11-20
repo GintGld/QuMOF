@@ -69,6 +69,7 @@ def pair_key(op_list, type_a, fa, type_b, fb) -> tuple:
             key = (ta, _ikey(tuple(x - s for x, s in zip(a, shift))), tb, _ikey(tuple(x - s for x, s in zip(b, shift))))
             if best is None or key < best:
                 best = key
+    assert best is not None  # op_list always holds at least the identity
     return best
 
 

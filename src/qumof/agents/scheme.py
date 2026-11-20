@@ -57,8 +57,9 @@ def scripted_a2(packet: dict) -> dict:
     """Simplest models first: the three catalogue models with the fewest parameters per topology."""
     rows = []
     for t in packet["topologies"]:
-        models, compiler = _models_for(packet, t["topology_id"])
-        rows.append(_row(packet, t["topology_id"], models, compiler))
+        models_and_compiler = _models_for(packet, t["topology_id"])
+        assert models_and_compiler is not None
+        rows.append(_row(packet, t["topology_id"], *models_and_compiler))
     return {"status": "OK", "topologies": rows, "missing_input_ids": [], "error_codes": []}
 
 

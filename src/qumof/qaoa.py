@@ -189,6 +189,7 @@ def run_qaoa(spec, topo, hamiltonian: dict, encoding: dict, protocol: dict, seed
         calls += evals
         if best_value is None or value < best_value:
             best_params, best_value = params, value
+    assert best_params is not None # FIXME validate in another way
     t_solver = time.perf_counter()
     probs = [abs(a) ** 2 for a in evolve(best_params, cost, pairs)]
     cumulative, acc = [], 0.0

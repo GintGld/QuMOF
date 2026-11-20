@@ -33,7 +33,7 @@ from __future__ import annotations
 import dataclasses
 import json
 from pathlib import Path
-from typing import TypedDict
+from typing import NotRequired, TypedDict, Any
 
 from ..contract import PipelineError, canonical_json, content_hash, make_record
 from ..gateway import review_proposal
@@ -49,7 +49,7 @@ from .validate import (render_assessment, validate_assessment, validate_hamilton
                        validate_setup)
 
 
-class AgentState(TypedDict, total=False):
+class AgentState(TypedDict):
     setup: dict
     screening: dict
     model_grid: dict
@@ -62,6 +62,9 @@ class AgentState(TypedDict, total=False):
     grid_history: list
     optimisation: list
     stop: dict
+    errors: NotRequired[Any]
+    error_codes: NotRequired[Any]
+    missing_input_ids: NotRequired[Any]
 
 
 class AgentRun:
@@ -132,7 +135,7 @@ class AgentRun:
         except AgentCallError as exc:
             return self._stop(exc.code, exc.detail)
         if v["status"] != "VALID":
-            return self._stop(f"A1_{v['status']}", v.get("errors") or v.get("error_codes") + v.get("missing_input_ids"))
+            return self._stop(f"A1_{v['status']}", v.get("errors") or v.get("error_codes", []) + v.get("missing_input_ids", []))
         return {"setup": {"plans": v["plans"], "excluded": v["excluded"]}}
 
     def node_screen(self, state: AgentState) -> dict:
@@ -165,10 +168,10 @@ class AgentRun:
         except AgentCallError as exc:
             return self._stop(exc.code, exc.detail)
         if v["status"] != "VALID":
-            return self._stop(f"A2_{v['status']}", v.get("errors") or v.get("error_codes") + v.get("missing_input_ids"))
+            return self._stop(f"A2_{v['status']}", v.get("errors") or v.get("error_codes", []) + v.get("missing_input_ids", []))
         return {"model_grid": v["model_grid"]}
 
-    def agent_spec(self, setup: dict, grid: dict):
+    def agent_spec(self, setup: dict, grid: dict | None):
         """The project as the pipeline sees it: agents enabled, validated plans and model grid attached."""
         runtime = {"enabled": True, "llm_calls_allowed": True, "roles": list(self.controls.roles),
                    "max_llm_requests": self.controls.max_llm_requests,
@@ -340,7 +343,7 @@ class AgentRun:
 
     def run(self, engine: str = "auto") -> dict:
         graph, used = build_graph(self.nodes(), self.routes(), engine)
-        graph.invoke(AgentState())
+        graph.invoke({})  # pyright: ignore[reportArgumentType]  # empty AgentState. FIXME langgraph wants AgentState, the sequential fallback a dict: give both engines one protocol
         summary = json.loads((self.run_dir / "agent_run.json").read_text())
         summary["engine"] = used
         (self.run_dir / "agent_run.json").write_text(json.dumps(summary, indent=2, default=str) + "\n")
@@ -386,7 +389,7 @@ def check_connections(controls) -> dict:
     """agents-check: configuration, OpenRouter key/model/structured-output support and Valency reachability."""
     import requests
 
-    out = {"config_errors": [{"code": c, "field": f} for c, f in controls.errors()]}
+    out: dict[str, Any] = {"config_errors": [{"code": c, "field": f} for c, f in controls.errors()]}
     o = controls["openrouter"]
     try:
         models = requests.get(o["base_url"].rstrip("/") + "/models", timeout=30).json()["data"]

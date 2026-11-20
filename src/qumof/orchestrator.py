@@ -4,6 +4,7 @@ Stages commit immutable artifacts to the run store. A re-run with identical
 inputs reuses committed stages and never resubmits evaluator jobs.
 """
 from __future__ import annotations
+from typing import TypeAlias, Any
 
 from fractions import Fraction
 
@@ -11,7 +12,7 @@ from . import (acquisition, candidates, configuration_model, datasets, dft, embe
                optimization, ranking, references, refinement, screening, structures, transfer, validation)
 from .contract import PipelineError, StageStatus, StopReason, content_hash, make_record
 from .electronic import SyntheticFixtureBackend, electronic_stage_status
-from .intake import FIXTURE_PROJECT_TYPE, select_topologies, validate_project
+from .intake import FIXTURE_PROJECT_TYPE, ProjectSpec, select_topologies, validate_project
 from .report import build_report, write_report
 from .store import RunStore
 
@@ -29,8 +30,10 @@ class StageOutcome:
         self.status, self.artifacts, self.detail, self.halt = status, artifacts or {}, detail, halt
 
 
+Backend: TypeAlias = dft.PeriodicDFTBackend | SyntheticFixtureBackend
+
 class Pipeline:
-    def __init__(self, spec, run_dir):
+    def __init__(self, spec: ProjectSpec, run_dir):
         self.spec = spec
         self.physical = spec.project_type != FIXTURE_PROJECT_TYPE
         self.store = RunStore(run_dir)
@@ -38,14 +41,20 @@ class Pipeline:
         self.ctx: dict = {}      # name -> artifact record
         self.detail: dict = {}   # stage -> JSON detail
         self.status: dict = {}
-        self._backend = None
+        self._backend: Backend | None = None
 
     @property
-    def backend(self):
+    def backend(self) -> Backend:
         if self._backend is None:
             backend_cls = dft.PeriodicDFTBackend if self.physical else SyntheticFixtureBackend
             self._backend = backend_cls(self.spec, self.store)
         return self._backend
+
+    @property
+    def physical_spec(self) -> dict:
+        """``spec.physical`` of a physical project; only the _physical_* stages read it."""
+        assert self.spec.physical is not None, "physical stage run on a fixture project"
+        return self.spec.physical
 
     def _stage_inputs(self, name: str) -> dict:
         """Inputs a stage reads besides its upstream: the A2 model grid enters only the fitting stages, so an agent
@@ -143,7 +152,7 @@ class Pipeline:
 
     def _physical_screening(self):
         """Task 02: ML-potential screen when protocols.ml_potential_checkpoint is declared; identity otherwise."""
-        if not self.spec.physical["protocols"].get("ml_potential_checkpoint"):
+        if not self.physical_spec["protocols"].get("ml_potential_checkpoint"):
             return self._stage_screening()
         arts, detail = screening.screen(self.spec, self.store,
                                         lambda topo, decos: self._evaluate_decorations(topo, decos, "ml_calibration"))
@@ -256,6 +265,7 @@ class Pipeline:
         pool_rows = [row for tid in self.spec.topologies for row in self.ctx[f"pool/{tid}"]["pool"]]
         requests = [{"topology_id": r["topology_id"], "bits": r["bits"]} for r in pool_rows]
         # Fixture path. Physical projects: _physical_evaluation (build_framework -> periodic DFT).
+        assert isinstance(self.backend, SyntheticFixtureBackend) # FIXME that's strange there's "if" checker
         job_id = self.backend.submit(requests, purpose="evaluate_candidate_pool")
         train = self.ctx["train"]
         results = self.backend.collect(job_id, train["fidelity"], train["comparison_group"])
@@ -303,8 +313,8 @@ class Pipeline:
     def _physical_structures(self):
         spec, arts = self.spec, {}
         detail = {"symmetry": {}, "swap_reachability": {}, "atomic_construction": {}, "supercell_replication": {},
-                  "cluster_catalogue": {s["topology_id"]: s.get("cluster_catalogue") for s in spec.physical["sources"]}}
-        transfers = spec.physical.get("transfer_topologies") or {}
+                  "cluster_catalogue": {s["topology_id"]: s.get("cluster_catalogue") for s in self.physical_spec["sources"]}}
+        transfers = self.physical_spec.get("transfer_topologies") or {}
         for tid, topo in spec.topologies.items():
             space = arts[f"space/{tid}"] = structures.define_decoration_space(spec, topo)
             states = list(structures.states_of(spec, topo))
@@ -313,7 +323,7 @@ class Pipeline:
             detail["swap_reachability"][tid] = structures.swap_graph_connected(topo, topo.n_sites,
                                                                                structures.n_ones_of(spec, topo))
             # Rebuild the known parent (every slot keeps its parent linker) and compare with the parsed supercell.
-            lattice = spec.physical["lattices"][tid]
+            lattice = self.physical_spec["lattices"][tid]
             parent = {"configuration_id": f"{tid}:parent", "orbit_id": f"{tid}:parent", "topology_id": tid,
                       "species_by_slot": [s["parent_species"] for s in lattice["slots"]]}
             rebuilt = framework.build_framework(spec, topo, parent)
@@ -332,7 +342,7 @@ class Pipeline:
             # Exact replication test (no DFT): replicated configurations keep their features and orbit identity.
             reports = []
             for cell in transfers.get(tid, []):
-                mapping = transfer.slot_map(lattice, spec.physical["lattices"][cell.topology_id])
+                mapping = transfer.slot_map(lattice, self.physical_spec["lattices"][cell.topology_id])
                 if mapping is None:
                     reports.append({"transfer_topology_id": cell.topology_id, "status": "NOT_A_REPLICA_CELL"})
                     continue
@@ -357,6 +367,7 @@ class Pipeline:
                 results.append({"decoration": decoration, "status": "BUILD_FAILED", "failure": geometry["failure"],
                                 "selected": None, "outcomes": []})
                 continue
+            assert isinstance(self.backend, dft.PeriodicDFTBackend) # FIXME that's strange there's "if" checker
             evaluation = dft.evaluate_geometry(self.backend, geometry, decoration, purpose)
             for o in evaluation["outcomes"]:
                 for key in ("relaxation", "result"):
@@ -366,8 +377,8 @@ class Pipeline:
 
     def _geometry_classes(self, tid, results) -> dict:
         """T05.1: orbits whose relaxed structures are equivalent under the parent symmetry share one class."""
-        lattice = self.spec.physical["lattices"][tid]
-        tol = (self.spec.physical["protocols"].get("validation") or {}).get("geometry_equivalence_tolerance_A")
+        lattice = self.physical_spec["lattices"][tid]
+        tol = (self.physical_spec["protocols"].get("validation") or {}).get("geometry_equivalence_tolerance_A")
         items = [(r["decoration"]["orbit_id"], r["selected"]["relaxed_geometry"], r["selected"]["magnetic_state"].get("label"))
                  for r in results if r["status"] == "SUCCEEDED"]
         if tol is None:  # undeclared tolerance: only identical relaxed geometries are grouped (Milestone B rule)
@@ -418,6 +429,7 @@ class Pipeline:
             built = [(framework.build_framework(spec, topo, d), d) for topo, d in pair]
             if any(g["status"] != StageStatus.COMPLETED.value for g, _ in built):
                 raise PipelineError("DFT_CONVERGENCE_STUDY_FAILED", f"{key}: reference decorations could not be built")
+            assert isinstance(self.backend, dft.PeriodicDFTBackend) # FIXME that's strange there's "if" checker
             study = dft.difference_convergence_study(spec, self.backend, built)
             arts[f"dft_convergence/{key}"] = study
             detail["dft_convergence"][key] = {k: study[k] for k in ("status", "deviation_from_highest_cutoff_eV",
@@ -453,7 +465,7 @@ class Pipeline:
     def _physical_refinement(self):
         """T08: rounds of declared acquisition + DFT labels until the stopping rules decide (never past the budget)."""
         spec = self.spec
-        physical = spec.physical
+        physical = self.physical_spec
         stopping = physical["protocols"].get("stopping")
         if not stopping:
             return StageOutcome(StageStatus.DISABLED_BY_CONFIG, detail={"mode": "protocols.stopping is null"})
@@ -533,7 +545,7 @@ class Pipeline:
                 break
             previous = lead
         report = make_record(
-            "RefinementReport", spec.provenance, stop_reason=stop.value, rounds=history, max_rounds=stopping["max_rounds"],
+            "RefinementReport", spec.provenance, stop_reason=(stop.value if stop else 'none'), rounds=history, max_rounds=stopping["max_rounds"],
             consecutive_stable_rounds_required=required, final_training_snapshot_id=train["artifact_id"],
             criterion=("every topology selects a model passing grouped CV and the tolerance-aware leading set (orbits "
                        f"within {float(tol)} eV/fu of the {k}-th lowest prediction, per topology and pooled) is unchanged "
@@ -541,7 +553,7 @@ class Pipeline:
             final_holdout_used=False, coverage="screened decoration space of each working cell; not a global certificate")
         arts.update(refinement=report, train=train)
         status = StageStatus.COMPLETED if stop == StopReason.CONVERGED_WITHIN_SCOPE else StageStatus.INCONCLUSIVE
-        return StageOutcome(status, arts, {**detail, "stop_reason": stop.value, "n_rounds": len(history), "cv_groups": groups,
+        return StageOutcome(status, arts, {**detail, "stop_reason": (stop.value if stop else 'none'), "n_rounds": len(history), "cv_groups": groups,
                                            "n_training": train["per_topology"]})
 
     def _physical_model_selection(self):
@@ -565,10 +577,10 @@ class Pipeline:
             entries = [e for e in self.ctx["train"]["entries"] if e["topology_id"] == tid]
             preds = [configuration_model.predict(ham, topo, e["bits"]) for e in entries]
             labels = [Fraction(e["energy_exact"]) for e in entries]
-            tol = Fraction(str(self.spec.physical["tolerances"]["target_relative_energy_tolerance"]))
+            tol = Fraction(str(self.physical_spec["tolerances"]["target_relative_energy_tolerance"]))
             best = min(range(len(entries)), key=lambda i: (preds[i], i))
             detail.setdefault("labelled_ground_state_recovered", {})[tid] = labels[best] <= min(labels) + tol
-        policy = (self.spec.physical["protocols"].get("model_selection") or {}).get("on_inadequate", "halt")
+        policy = (self.physical_spec["protocols"].get("model_selection") or {}).get("on_inadequate", "halt")
         fitted = [t for t in self.spec.topologies if t not in {f["topology_id"] for f in failed}]
         if failed and policy == "drop_topology" and fitted:
             # The failing topologies leave the search with their reports; the ranking can no longer cover every
@@ -583,19 +595,20 @@ class Pipeline:
     def _physical_supercell_checks(self):
         """T01.5: DFT replication consistency and native transfer-cell predictions of each working-cell model."""
         spec = self.spec
-        transfers = spec.physical.get("transfer_topologies") or {}
+        transfers = self.physical_spec.get("transfer_topologies") or {}
         if not any(transfers.values()):
             return StageOutcome(StageStatus.DISABLED_BY_CONFIG, detail={"reason": "no transfer supercells declared"})
-        policy = (spec.physical["protocols"].get("validation") or {}).get("supercell_transfer") or {}
+        policy = (self.physical_spec["protocols"].get("validation") or {}).get("supercell_transfer") or {}
         arts, detail, statuses = {}, {}, []
         for tid, cells in transfers.items():
             topo, ham = spec.topologies[tid], self.ctx[f"hamiltonian/{tid}"]
             entries = sorted((e for e in self.ctx["train"]["entries"] if e["topology_id"] == tid),
                              key=lambda e: (Fraction(e["energy_exact"]), e["orbit_id"]))
             for cell in cells:
-                mapping = transfer.slot_map(spec.physical["lattices"][tid], spec.physical["lattices"][cell.topology_id])
+                mapping = transfer.slot_map(self.physical_spec["lattices"][tid], self.physical_spec["lattices"][cell.topology_id])
                 replicated = []
                 for entry in entries[:policy["n_replicated"]] if mapping is not None else []:
+                    assert mapping is not None  # the loop is empty otherwise
                     t_bits = transfer.replicate(entry["bits"], mapping)
                     records, res = self._evaluate_decorations(cell, [t_bits], "supercell_replication")
                     arts.update(records)
@@ -652,7 +665,7 @@ class Pipeline:
     def _physical_embedding(self):
         """T07.3: finite-cluster subtractive corrections. A blocked or UNVALIDATED correction never stops the
         DFT-only ranking, so this stage does not halt the run."""
-        if not self.spec.physical["protocols"].get("embedding"):
+        if not self.physical_spec["protocols"].get("embedding"):
             return StageOutcome(StageStatus.DISABLED_BY_CONFIG, detail={"ranking": "DFT-only"})
         pool = [(row, self.ctx[f"calc/{row['orbit_id']}"]) for tid in self.spec.topologies
                 for row in self.ctx[f"pool/{tid}"]["pool"]]
@@ -685,10 +698,10 @@ class Pipeline:
     def _reference_phases(self):
         """T09.2 reference set 'pure_endpoints': every slot of every topology holding one linker species."""
         spec = self.spec
-        species = list(next(iter(spec.physical["chemistry"]["composition_by_sublattice"].values())))
+        species = list(next(iter(self.physical_spec["chemistry"]["composition_by_sublattice"].values())))
         arts, refs, missing = {}, [], []
         for tid, topo in spec.topologies.items():
-            n = len(spec.physical["lattices"][tid]["slots"])
+            n = len(self.physical_spec["lattices"][tid]["slots"])
             for sp in species:
                 rid = f"{tid}:reference:{sp}"
                 decoration = {"configuration_id": rid, "orbit_id": rid, "topology_id": tid, "bits": None,
@@ -708,12 +721,12 @@ class Pipeline:
     def _physical_ranking(self):
         pool_rows = [row for tid in self.spec.topologies for row in self.ctx[f"pool/{tid}"]["pool"]]
         results = [v for k, v in self.ctx.items() if k.startswith("calc/")]
-        tol = Fraction(str(self.spec.physical["tolerances"]["target_relative_energy_tolerance"]))
+        tol = Fraction(str(self.physical_spec["tolerances"]["target_relative_energy_tolerance"]))
         base = ranking.rank_candidates(self.spec, pool_rows, results, "base", tie_tolerance=tol)
         classes = {}
         for per_topology in (self.detail.get("evaluation") or {}).get("relaxed_geometry_classes", {}).values():
             classes.update(per_topology)
-        validation_policy = self.spec.physical["protocols"].get("validation") or {}
+        validation_policy = self.physical_spec["protocols"].get("validation") or {}
         arts = {"ranking/base": base}
         if validation_policy.get("reference_phases") == "pure_endpoints":
             ref_arts, refs, missing = self._reference_phases()
@@ -745,7 +758,7 @@ class Pipeline:
     def _physical_validation(self):
         geometries = {v["decoration_id"]: v for k, v in self.ctx.items() if k.startswith("geometry/")}
         calcs = [v for k, v in self.ctx.items() if k.startswith("dftcalc/")]
-        checks = {name: StageStatus.NOT_RUN.value for name in ranking.validate_structures(self.spec)}
+        checks: dict[str, Any] = {name: StageStatus.NOT_RUN.value for name in ranking.validate_structures(self.spec)}
         checks.update(
             builder_sanity={"n_built": sum(g["status"] == StageStatus.COMPLETED.value for g in geometries.values()),
                             "n_build_failures": sum(g["status"] != StageStatus.COMPLETED.value for g in geometries.values())},

@@ -15,6 +15,7 @@ import json
 import math
 import re
 from collections import Counter
+from datetime import timedelta
 from pathlib import Path
 
 from ..intake import FIXTURE_PROJECT_TYPE
@@ -93,11 +94,12 @@ class ValencyMCP:
 
         headers = {"Authorization": f"Bearer {self.token}"}
         try:  # mcp >= 2: headers go on the HTTP client
-            from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
+            from mcp.client.streamable_http import streamable_http_client
+            from mcp.shared._httpx_utils import create_mcp_http_client
             http = create_mcp_http_client(headers=headers)
             transport = streamable_http_client(self.url, http_client=http)
         except ImportError:  # mcp 1.x
-            from mcp.client.streamable_http import streamablehttp_client
+            from mcp.client.streamable_http import streamablehttp_client # TODO use new function
             http, transport = None, streamablehttp_client(self.url, headers=headers)
         out = []
         try:
@@ -106,7 +108,7 @@ class ValencyMCP:
                     await session.initialize()
                     for name, arguments in calls:
                         try:
-                            result = await session.call_tool(name, arguments, read_timeout_seconds=self.timeout)
+                            result = await session.call_tool(name, arguments, read_timeout_seconds=timedelta(seconds=self.timeout))
                             out.append(_parse_tool_result(result))
                         except Exception as exc:  # one failed call is a retrieval gap, not a run failure
                             out.append(exc)

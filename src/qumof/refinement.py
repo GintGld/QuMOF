@@ -112,7 +112,7 @@ def run_active_learning(spec, store, backend, train: dict, dev: dict, split: dic
         store.put(train)
         snapshots.append(train["artifact_id"])
         history.append({**entry, "job_id": job_id, "acquired": [b["orbit_id"] for b in batch]})
-    report = make_record("RefinementReport", spec.provenance, stop_reason=stop.value, max_iterations=max_iter,
+    report = make_record("RefinementReport", spec.provenance, stop_reason=(stop.value if stop else 'none'), max_iterations=max_iter,
                          batch_size_per_topology=batch_size, iterations=history, snapshot_ids=snapshots,
                          convergence_criterion="every topology selects a model with development RMSE <= threshold",
                          final_holdout_used=False)

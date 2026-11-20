@@ -99,6 +99,7 @@ def test_replicated_configuration_has_identical_features_and_orbit(c_run):
     replication = report["stage_detail"]["structures"]["supercell_replication"]["toy_pcu"][0]
     assert replication["status"] == "COMPLETED" and replication["n_states"] == 56
     mapping = transfer.slot_map(spec.physical["lattices"]["toy_pcu"], spec.physical["lattices"][cell.topology_id])
+    assert mapping is not None
     names = cm.all_model_features(spec, topo)
     for bits in list(structures.states_of(spec, topo))[:40]:
         assert cm.feature_vector(topo, bits, names) == cm.feature_vector(cell, transfer.replicate(bits, mapping), names)
@@ -122,6 +123,7 @@ def test_native_transfer_states_are_not_replicas(c_run):
     spec, _, _ = c_run
     cell = spec.physical["transfer_topologies"]["toy_pcu"][0]
     mapping = transfer.slot_map(spec.physical["lattices"]["toy_pcu"], spec.physical["lattices"][cell.topology_id])
+    assert mapping is not None
     states = transfer.native_states(spec, cell, mapping, 3, seed=3)
     assert len(states) == 3 and not any(transfer.is_replica(b, mapping) for b in states)
     assert states == transfer.native_states(spec, cell, mapping, 3, seed=3)  # seeded
@@ -218,6 +220,7 @@ def test_mixture_balance_is_exact_and_reports_unreachable_compositions():
             {"reference_id": "B2", "inventory": {"Zn": 4, "C": 24, "H": 108, "N": 12, "O": 24}, "energy_exact": "-121"}]
     target = {"C": 12, "H": 51, "N": 3, "O": 12, "Zn": 2}
     best = references.mixture_balance(target, refs)
+    assert best is not None
     assert best["energy_exact"] == Fraction(-100, 4) + Fraction(-121, 4)  # the lower B polymorph is used
     assert {c["reference_id"]: c["cells_per_formula_unit"] for c in best["coefficients"]} == {"A": "1/4", "B2": "1/4"}
     assert references.mixture_balance({**target, "F": 1}, refs) is None

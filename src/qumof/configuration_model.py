@@ -361,7 +361,7 @@ def fit_and_select_grouped(spec, topo, train: dict, groups: dict) -> dict:
         base.update(features=eff, dropped_dependent_features=dropped, n_parameters=len(eff),
                     polynomial_degree=max(feature_degree(n) for n in eff))
         try:
-            oof, fold_coefs = [None] * len(entries), []
+            oof, fold_coefs = [Fraction(0)] * len(entries), []
             for fold in sorted(set(folds.values())):
                 fit_idx = [i for i, g in enumerate(entry_groups) if folds[g] != fold]
                 coef = ridge_exact([x[i] for i in fit_idx], [y[i] for i in fit_idx], alpha, const)

@@ -184,7 +184,7 @@ def vqe_simulation(artifact: dict, seed: int = 0, max_iterations: int = 200) -> 
                    wall_time_s=round(time.perf_counter() - t0, 4))
 
 
-def _recover(sample: int, norb: int, nelec, occupancy: list) -> int | None:
+def _recover(sample: int, norb: int, nelec, occupancy: list) -> int:
     """Configuration recovery: flip the least (most) likely occupied (empty) spin orbitals until the sector holds."""
     for spin, target in ((0, nelec[0]), (1, nelec[1])):
         qubits = [2 * p + spin for p in range(norb)]
