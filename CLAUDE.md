@@ -74,3 +74,30 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 - A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
+
+## Linting & formatting (ruff)
+
+After editing any Python file, run on the files you changed:
+
+```bash
+uv run ruff check --fix <files>
+uv run ruff format <files>
+```
+
+Before finishing a task, check the whole repo:
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
+```
+
+All three must pass. If one fails, fix the code, then rerun.
+
+Rules:
+- Config lives in the root `pyproject.toml`. Don't change ruff settings or rule selection unless asked.
+- Never add `# noqa`, `# fmt: skip` or `# fmt: off` to silence ruff. Fix the issue. If it can't be fixed, explain why and ask first.
+- When you fix code that has an existing `# noqa` comment, remove the comment if the issue is gone (RUF100 reports stale ones).
+- Put comments on their own line above the code, not at the end of a line. Long trailing comments make `ruff format` split lines into `if (\n    x\n):`.
+- Only format files you touched. Don't run `ruff format .` on the whole repo as part of an unrelated change.
+- Never use `--unsafe-fixes` without showing me the diff first (`ruff check --unsafe-fixes --diff <files>`).
