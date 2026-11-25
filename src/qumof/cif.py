@@ -54,7 +54,7 @@ type Loop = tuple[list[str], list[Token]]
 def _parse_items(text: str) -> tuple[dict, list[Loop]]:
     """Return (scalar items, loops). Loops are (column names, rows of tokens)."""
     items, loops = {}, []
-    lines = [l for l in text.splitlines() if l.strip() and not l.lstrip().startswith("#")]
+    lines = [l for l in text.splitlines() if l.strip() and not l.lstrip().startswith("#")]  # noqa: E741
     i = 0
     while i < len(lines):
         line = lines[i].strip()
@@ -227,9 +227,13 @@ def parse_cif(text: str, source: str) -> dict:
         for f in images:
             for other in atoms:
                 if (
-                    _frac_distance(f, other["frac"]) <= POSITION_DEDUP_TOL
-                    and other["label"] != site["label"]
-                ) and other["occupancy"] >= 1 and site["occupancy"] >= 1:
+                    (
+                        _frac_distance(f, other["frac"]) <= POSITION_DEDUP_TOL
+                        and other["label"] != site["label"]
+                    )
+                    and other["occupancy"] >= 1
+                    and site["occupancy"] >= 1
+                ):
                     raise PipelineError(
                         "CIF_OVERLAPPING_SITES", f"{site['label']} / {other['label']}"
                     )
@@ -294,6 +298,6 @@ def write_cif(
     ]
     out += [
         f"{l} {e} {f[0]:.6f} {f[1]:.6f} {f[2]:.6f} 1.0"
-        for l, e, f in zip(labels, elements, frac_coords, strict=False)
+        for l, e, f in zip(labels, elements, frac_coords, strict=False)  # noqa: E741
     ]
     return "\n".join(out) + "\n"

@@ -107,8 +107,10 @@ def zn4o_cluster(atoms) -> dict:
     nl.update(atoms)
     sym = atoms.get_chemical_symbols()
     [i for i, s in enumerate(sym) if s == "Zn"]
+
     def nb(i):
         return nl.get_neighbors(i)
+
     mu4 = next(
         i for i, s in enumerate(sym) if s == "O" and sum(sym[j] == "Zn" for j in nb(i)[0]) == 4
     )
@@ -389,8 +391,10 @@ def main(argv=None) -> int:
     for model in ["kang_control", *models]:
         rs = [x for x in scored if x["model"] == model]
         ok = [x for x in rs if "top1" in x]
+
         def f(k):
-            return f"{sum(bool(x[k]) for x in ok)}/{len(rs)}"
+            return f"{sum(bool(x[k]) for x in ok)}/{len(rs)}"  # noqa: B023
+
         sp = [
             x["spearman_qubo_vs_orb_top_k"]
             for x in ok
@@ -399,7 +403,7 @@ def main(argv=None) -> int:
         lines.append(
             f"| {model} | {len(rs)} | {len(ok)} | {f('qubo_ground_is_experimental')} | {f('experimental_in_top_k')} | "
             f"{f('orb_lowest_is_experimental')} | {f('top1_is_orb_lowest_of_top_k')} | "
-            f"{(sum(sp) / len(sp)) if sp else '–'} | {sum(x['cost_usd'] or 0 for x in rs):.4f} |"
+            f"{(sum(sp) / len(sp)) if sp else '–'} | {sum(x['cost_usd'] or 0 for x in rs):.4f} |"  # noqa: RUF001
         )
     lines += ["", "## orb-v3 energies (eV per cell, lowest first)", ""] + [
         f"- `{s}` {e[s]:.3f}{'  ← experimental' if s in reference else ''}" for s in ordered

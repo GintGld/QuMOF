@@ -117,7 +117,9 @@ def feature_value(name: str, topo, bits):
         return sum(bits[i] for i in _orbit_sites(name, topo))
     if name == "unlike_distance_1":
         weights = topo.pair_weights_d1 or (1,) * len(topo.pairs_d1)
-        return sum(w * (bits[i] != bits[j]) for (i, j), w in zip(topo.pairs_d1, weights, strict=False))
+        return sum(
+            w * (bits[i] != bits[j]) for (i, j), w in zip(topo.pairs_d1, weights, strict=False)
+        )
     if name == "unlike_distance_2":
         return sum(bits[i] != bits[j] for i, j in topo.pairs_d2)
     if name == "BBB_paths":
@@ -214,7 +216,8 @@ def rmse(residuals) -> float:
 
 def predict_exact(names, coefficients, topo, bits) -> Fraction:
     return sum(
-        (c * v for c, v in zip(coefficients, feature_vector(topo, bits, names), strict=False)), Fraction(0)
+        (c * v for c, v in zip(coefficients, feature_vector(topo, bits, names), strict=False)),
+        Fraction(0),
     )
 
 
@@ -512,7 +515,10 @@ def fit_and_select_grouped(spec, topo, train: dict, groups: dict) -> dict:
             )
             continue
         residuals = [p - t for p, t in zip(oof, y, strict=False)]
-        train_res = [sum((c * v for c, v in zip(coef, xi, strict=False)), Fraction(0)) - t for xi, t in zip(x, y, strict=False)]
+        train_res = [
+            sum((c * v for c, v in zip(coef, xi, strict=False)), Fraction(0)) - t
+            for xi, t in zip(x, y, strict=False)
+        ]
         cv_rmse = rmse(residuals)
         recall = low_energy_recall(y, oof, criterion["k"], tol)
         passes = cv_rmse <= float(tol) and recall >= criterion["min_recall"]

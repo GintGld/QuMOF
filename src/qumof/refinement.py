@@ -43,8 +43,11 @@ def plan_next_batch(spec, snapshot: dict, split: dict, batch_size: int, seed: in
         for _ in range(min(batch_size, len(pool))):
 
             def novelty(row):
-                f = tuple(feature_vector(topo, row["bits"], spec.feature_order))
-                return min((sum(abs(a - b) for a, b in zip(f, g, strict=False)) for g in known), default=10**9)
+                f = tuple(feature_vector(topo, row["bits"], spec.feature_order))  # noqa: B023
+                return min(
+                    (sum(abs(a - b) for a, b in zip(f, g, strict=False)) for g in known),  # noqa: B023
+                    default=10**9,
+                )
 
             best = max(pool, key=novelty)  # max keeps the first (seeded) maximiser
             pool.remove(best)

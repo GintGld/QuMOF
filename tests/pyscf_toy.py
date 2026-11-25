@@ -58,7 +58,7 @@ def formate_cif():
         "_atom_site_fract_z",
         "_atom_site_occupancy",
     ]
-    lines += [f"{l} {e} {x:.6f} {y:.6f} {z:.6f} 1.0" for l, e, x, y, z in atoms]
+    lines += [f"{l} {e} {x:.6f} {y:.6f} {z:.6f} 1.0" for l, e, x, y, z in atoms]  # noqa: E741
     return "\n".join(lines) + "\n"
 
 

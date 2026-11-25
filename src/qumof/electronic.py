@@ -115,12 +115,12 @@ class SyntheticFixtureBackend:
         job_dir = self.store.jobs / job_id.replace(":", "__")
         requests = [
             json.loads(l)
-            for l in (job_dir / "requests.jsonl").read_text().splitlines()
+            for l in (job_dir / "requests.jsonl").read_text().splitlines()  # noqa: E741
             if l.strip()
         ]
         responses = [
             json.loads(l)
-            for l in (job_dir / "responses.jsonl").read_text().splitlines()
+            for l in (job_dir / "responses.jsonl").read_text().splitlines()  # noqa: E741
             if l.strip()
         ]
         if len(responses) != len(requests):

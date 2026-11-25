@@ -112,7 +112,7 @@ def _relax(atoms, calc, policy: dict) -> dict:
 def main(argv) -> int:
     probe = argv[0] == "--probe"
     path = argv[1] if probe else argv[0]
-    batch = json.loads(open(path).read())
+    batch = json.loads(open(path).read())  # noqa: SIM115
     protocol = batch["protocol"]
     try:
         if protocol["engine"] != "orb" or protocol["model"] not in ORB_MODELS:
@@ -123,11 +123,11 @@ def main(argv) -> int:
     ) as exc:  # the engine is missing or the checkpoint cannot load: report, do not guess
         json.dump(
             {"identity": None, "error": f"{type(exc).__name__}: {exc}", "results": {}},
-            open("probe.json" if probe else "results.json", "w"),
+            open("probe.json" if probe else "results.json", "w"),  # noqa: SIM115
         )
         return 2
     if probe:
-        json.dump({"identity": identity}, open("probe.json", "w"), indent=2)
+        json.dump({"identity": identity}, open("probe.json", "w"), indent=2)  # noqa: SIM115
         return 0
     from ase import Atoms
 

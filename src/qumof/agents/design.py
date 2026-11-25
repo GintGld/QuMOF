@@ -102,7 +102,7 @@ def _weight(term: dict, edge: dict) -> float:
 
 def compile_design(design: dict, packet: dict) -> dict:
     """Binary polynomial {sites tuple: coefficient} (x_i = 1: second linker) from the chosen terms."""
-    (a, la), (b, lb) = [(l["id"], l["characteristic_length_A"]) for l in packet["linkers"]]
+    (a, la), (b, lb) = [(l["id"], l["characteristic_length_A"]) for l in packet["linkers"]]  # noqa: E741
     n, counts = packet["sites"]["n_sites"], packet["composition"]
     lbar = 2 * (counts[a] * la + counts[b] * lb) / n
     poly: dict = {}
@@ -210,7 +210,9 @@ def qaoa_probabilities(packet: dict, poly: dict, reference: set, config: dict) -
         for _ in range(config["restarts"]):
             x0 = [rng.uniform(0, math.pi / 2) for _ in range(2 * config["layers"])]
             params, value, _ = nelder_mead(
-                lambda p: sum(abs(a) ** 2 * c for a, c in zip(evolve(p, cost, pairs), cost, strict=False)),
+                lambda p: sum(
+                    abs(a) ** 2 * c for a, c in zip(evolve(p, cost, pairs), cost, strict=False)
+                ),
                 x0,
                 0.3,
                 config["max_evaluations"],
@@ -288,7 +290,7 @@ def fake_device(
 def kang_spectrum(material: dict, packet: dict) -> dict:
     """The paper's Hamiltonian on every fixed-composition state (ratio/occupancy terms vanish there)."""
     ref = material["reference"]["kang_hamiltonian"]
-    lengths = [l["characteristic_length_A"] for l in packet["linkers"]]
+    lengths = [l["characteristic_length_A"] for l in packet["linkers"]]  # noqa: E741
     out = {}
     for s in feasible_states(packet):
         Ls = [
@@ -323,7 +325,11 @@ def spectrum_agreement(material: dict, packet: dict, poly: dict) -> dict:
     n = len(keys)
     mq, mk = sum(q) / n, sum(k) / n
     var = sum((x - mq) ** 2 for x in q)
-    scale = max(sum((x - mq) * (y - mk) for x, y in zip(q, k, strict=False)) / var, 0.0) if var > TOL else 0.0
+    scale = (
+        max(sum((x - mq) * (y - mk) for x, y in zip(q, k, strict=False)) / var, 0.0)
+        if var > TOL
+        else 0.0
+    )
     offset = mk - scale * mq
     mae = sum(abs(scale * x + offset - y) for x, y in zip(q, k, strict=False)) / n
     rq, rk = _ranks(q), _ranks(k)
@@ -333,7 +339,9 @@ def spectrum_agreement(material: dict, packet: dict, poly: dict) -> dict:
     return {
         "mae": mae,
         "nmae": mae / spread if spread else None,
-        "spearman": (sum((a - mrq) * (b - mrk) for a, b in zip(rq, rk, strict=False)) / den) if den else None,
+        "spearman": (sum((a - mrq) * (b - mrk) for a, b in zip(rq, rk, strict=False)) / den)
+        if den
+        else None,
         "scale": scale,
         "offset": offset,
         "n_states": n,
@@ -552,7 +560,7 @@ def _mean(values: list):
 
 
 def _fmt(value, spec=".3f") -> str:
-    return "–" if value is None else format(value, spec)
+    return "–" if value is None else format(value, spec)  # noqa: RUF001
 
 
 def render(rows: list, materials: list, baseline: dict | None = None) -> str:
@@ -598,10 +606,10 @@ def render(rows: list, materials: list, baseline: dict | None = None) -> str:
     if baseline:
         maes = ", ".join(f"{mat} {_fmt(b['mae'], '.1f')}" for mat, b in sorted(baseline.items()))
         lines.append(
-            f"| random catalogue design (baseline, {next(iter(baseline.values()))['n']} per material) | – | – | "
+            f"| random catalogue design (baseline, {next(iter(baseline.values()))['n']} per material) | – | – | "  # noqa: RUF001
             f"{_fmt(_mean([b['reproduced_rate'] for b in baseline.values()]), '.0%')} | "
             f"{_fmt(_mean([b['nmae'] for b in baseline.values()]))} | "
-            f"{_fmt(_mean([b['spearman'] for b in baseline.values()]))} | {maes} | – | – |"
+            f"{_fmt(_mean([b['spearman'] for b in baseline.values()]))} | {maes} | – | – |"  # noqa: RUF001
         )
     lines += [
         "",

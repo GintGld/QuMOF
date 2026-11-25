@@ -26,7 +26,7 @@ def check_run(spec, report: dict) -> dict:
     )
     holdout = [
         json.loads(l)
-        for l in (root / f"harness/{spec.case}_holdout.jsonl").read_text().splitlines()
+        for l in (root / f"harness/{spec.case}_holdout.jsonl").read_text().splitlines()  # noqa: E741
         if l.strip()
     ]
     checks = []
@@ -131,13 +131,16 @@ def check_run(spec, report: dict) -> dict:
                 same = (
                     _close(art["constant_eV"], ref["qubo"]["constant_eV"])
                     and all(
-                        _close(a, b) for a, b in zip(art["linear_eV"], ref["qubo"]["linear_eV"], strict=False)
+                        _close(a, b)
+                        for a, b in zip(art["linear_eV"], ref["qubo"]["linear_eV"], strict=False)
                     )
                     and [(q["i"], q["j"]) for q in art["quadratic_eV"]]
                     == [(q["i"], q["j"]) for q in ref["qubo"]["quadratic_eV"]]
                     and all(
                         _close(a["value"], b["value"])
-                        for a, b in zip(art["quadratic_eV"], ref["qubo"]["quadratic_eV"], strict=False)
+                        for a, b in zip(
+                            art["quadratic_eV"], ref["qubo"]["quadratic_eV"], strict=False
+                        )
                     )
                 )
                 check(f"{tid}:qubo_coefficients_match_reference", same)

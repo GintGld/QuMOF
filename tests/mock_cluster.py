@@ -18,7 +18,7 @@ PAIR_HA = {"DFT": 0.010, "high": 0.013}
 
 
 def main():
-    job = json.load(open(sys.argv[1]))
+    job = json.load(open(sys.argv[1]))  # noqa: SIM115
     level = job["level"]
     kind = "DFT" if level["method"] == "DFT" else "high"
     if kind == "high" and os.environ.get("MOCK_CLUSTER_MODE") == "fail_high":
@@ -43,7 +43,7 @@ def main():
             "details": {"engine": "mock_cluster (SYNTHETIC)"},
             "versions": {"mock_cluster": "1"},
         }
-    json.dump(result, open("result.json", "w"), indent=1, sort_keys=True)
+    json.dump(result, open("result.json", "w"), indent=1, sort_keys=True)  # noqa: SIM115
 
 
 if __name__ == "__main__":

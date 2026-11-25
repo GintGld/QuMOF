@@ -130,7 +130,7 @@ class QuantumEspressoAdapter:
     # TODO: k-point convergence of energy differences (only the basis cutoff is converged now).
     engine, name = "quantum_espresso", "quantum_espresso_pw"
     required = ("pseudo_dir", "pseudopotentials", "ecutwfc_Ry", "ecutrho_Ry", "conv_thr_Ry")
-    retry_keys = {
+    retry_keys = {  # noqa: RUF012
         "mixing_beta",
         "mixing_mode",
         "electron_maxstep",
@@ -245,7 +245,7 @@ class QuantumEspressoAdapter:
             )
         out = []
         for name, lines in blocks:
-            out += [f"&{name}"] + [f"  {l}" for l in lines] + ["/"]
+            out += [f"&{name}"] + [f"  {l}" for l in lines] + ["/"]  # noqa: E741
         out.append("ATOMIC_SPECIES")
         out += [
             f"  {el} {ATOMIC_MASSES[el]} {protocol['pseudopotentials'][el]['file']}"
@@ -341,7 +341,7 @@ class QuantumEspressoAdapter:
                 r"ATOMIC_POSITIONS \((\w+)\)\s*\n(.*?)End final coordinates", final, re.S
             )
             if pos:
-                rows = [l.split() for l in pos.group(2).strip().splitlines() if l.strip()]
+                rows = [l.split() for l in pos.group(2).strip().splitlines() if l.strip()]  # noqa: E741
                 elements = [r[0] for r in rows]
                 xyz = [tuple(float(x) for x in r[1:4]) for r in rows]
                 if pos.group(1) == "angstrom":
@@ -382,12 +382,20 @@ class PySCFAdapter:
         "precision",
         "max_memory_MB",
     )
-    retry_keys = {"damp", "level_shift", "diis_space", "diis_start_cycle", "max_cycle"}
+    retry_keys = {"damp", "level_shift", "diis_space", "diis_start_cycle", "max_cycle"}  # noqa: RUF012
     cutoff_key, energy_unit, energy_to_eV = "ke_cutoff_Ha", "Ha", HARTREE_TO_EV
     conventions = ("internal_energy", "free_energy", "zero_temperature_extrapolated")
     input_name, output_name = "job.json", "result.json"
     worker = Path(__file__).with_name("pyscf_worker.py")
-    DISPERSIONS = ("none", "d4", *tuple(f"{v}{atm}" for v in ("d3bj", "d3zero", "d3bjm", "d3zerom", "d3op") for atm in ("", "-atm")))
+    DISPERSIONS = (
+        "none",
+        "d4",
+        *tuple(
+            f"{v}{atm}"
+            for v in ("d3bj", "d3zero", "d3bjm", "d3zerom", "d3op")
+            for atm in ("", "-atm")
+        ),
+    )
 
     def protocol_errors(self, protocol, root: Path, elements, lattices) -> list:
         errors = []
@@ -1103,7 +1111,9 @@ class PeriodicDFTBackend:
                     "lattice": [[round(x, 4) for x in v] for v in parsed["final_lattice_A"]],
                     "atoms": sorted(
                         (e, tuple(round(x, 4) % 1.0 for x in f))
-                        for e, f in zip(parsed["final_elements"], parsed["final_frac_coords"], strict=False)
+                        for e, f in zip(
+                            parsed["final_elements"], parsed["final_frac_coords"], strict=False
+                        )
                     ),
                 }
             ),

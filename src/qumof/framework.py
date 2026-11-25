@@ -350,7 +350,7 @@ def deconstruct(structure: dict, bond_tolerance: float) -> dict:
     for n_id, node in enumerate(out_nodes):
         node["incidences"] = sorted(
             (l_id, frame)
-            for l_id, l in enumerate(out_linkers)
+            for l_id, l in enumerate(out_linkers)  # noqa: E741
             for nid, frame in l["node_incidences"]
             if nid == n_id
         )
@@ -365,7 +365,10 @@ def deconstruct(structure: dict, bond_tolerance: float) -> dict:
 
 # -- slot lattice -------------------------------------------------------------
 def _slot_key(linker) -> tuple:
-    return (*tuple(round(c, 3) % 1.0 for c in linker["centroid_frac"]), tuple(linker["formula"].items()))
+    return (
+        *tuple(round(c, 3) % 1.0 for c in linker["centroid_frac"]),
+        tuple(linker["formula"].items()),
+    )
 
 
 def _frac_close(f, g, tol=SLOT_MATCH_TOL) -> bool:
@@ -479,18 +482,18 @@ def build_slot_lattice(
                 f"a {kind[:-1]} component is connected to its own periodic image",
             )
     node_species = [species_for_formula(n["formula"], blocks, "node") for n in parts["nodes"]]
-    linker_species = [species_for_formula(l["formula"], blocks, "linker") for l in parts["linkers"]]
+    linker_species = [species_for_formula(l["formula"], blocks, "linker") for l in parts["linkers"]]  # noqa: E741
     for formula, sp in zip([n["formula"] for n in parts["nodes"]], node_species, strict=False):
         if sp is None:
             fail("UNKNOWN_NODE", str(formula))
-    for formula, sp in zip([l["formula"] for l in parts["linkers"]], linker_species, strict=False):
+    for formula, sp in zip([l["formula"] for l in parts["linkers"]], linker_species, strict=False):  # noqa: E741
         if sp is None:
             fail("UNKNOWN_LINKER", str(formula))
     if errors:
         return {"errors": errors}
 
     # Connector count/geometry: declared connector atoms and points of extension per block.
-    for l, sp in zip(parts["linkers"], linker_species, strict=False):
+    for l, sp in zip(parts["linkers"], linker_species, strict=False):  # noqa: E741
         block = blocks[sp]
         if len(l["connector_atoms"]) != block["n_connector_atoms"]:
             fail(
@@ -513,7 +516,7 @@ def build_slot_lattice(
     order = sorted(range(len(parts["linkers"])), key=lambda i: _slot_key(parts["linkers"][i]))
     slots = []
     for slot_id, li in enumerate(order):
-        l = parts["linkers"][li]
+        l = parts["linkers"][li]  # noqa: E741
         slots.append(
             {
                 "slot_id": slot_id,
@@ -634,7 +637,10 @@ def species_delta(blocks: dict, species: str) -> dict:
 # -- builder ------------------------------------------------------------------
 def geometry_hashes(lattice, elements, fracs) -> tuple[str, str]:
     """(ordered hash in builder order, order-independent canonical hash)."""
-    rows = [(e, tuple(round(_wrap(x), 5) % 1.0 for x in f)) for e, f in zip(elements, fracs, strict=False)]
+    rows = [
+        (e, tuple(round(_wrap(x), 5) % 1.0 for x in f))
+        for e, f in zip(elements, fracs, strict=False)
+    ]
     lat = [[round(x, 5) for x in v] for v in lattice]
     return content_hash({"lattice": lat, "atoms": rows}), content_hash(
         {"lattice": lat, "atoms": sorted(rows)}
@@ -797,7 +803,7 @@ def map_to_parent_slots(
     lattice = geometry["lattice"]
     slot_of = _match(
         lattice,
-        [l.get("connector_centroid_frac") for l in parts["linkers"]],
+        [l.get("connector_centroid_frac") for l in parts["linkers"]],  # noqa: E741
         [s["connector_centroid_frac"] for s in info["slots"]],
         tolerance_A,
     )
@@ -811,7 +817,7 @@ def map_to_parent_slots(
         return {"retained": False, "reason": "SLOT_MAPPING_FAILED"}
     found = sorted(
         (slot_of[i], tuple(sorted(Counter(node_of[n] for n, _ in l["node_incidences"]).items())))
-        for i, l in enumerate(parts["linkers"])
+        for i, l in enumerate(parts["linkers"])  # noqa: E741
     )
     reference = sorted(
         (s["slot_id"], tuple(sorted(Counter(n for n, _ in s["node_incidences"]).items())))

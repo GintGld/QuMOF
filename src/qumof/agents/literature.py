@@ -24,7 +24,34 @@ from ..intake import FIXTURE_PROJECT_TYPE
 TITLE_MATCH = 0.85
 CHUNK_CHARS = 1500
 STOP = set(
-    ["a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "into", "is", "it", "of", "on", "or", "that", "the", "this", "to", "with", "we", "our", "via", "using"]
+    [
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "in",
+        "into",
+        "is",
+        "it",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "this",
+        "to",
+        "with",
+        "we",
+        "our",
+        "via",
+        "using",
+    ]
 )
 
 
@@ -142,7 +169,7 @@ class ValencyMCP:
             http, transport = None, streamablehttp_client(self.url, headers=headers)
         out = []
         try:
-            async with transport as streams:
+            async with transport as streams:  # noqa: SIM117
                 async with ClientSession(streams[0], streams[1]) as session:
                     await session.initialize()
                     for name, arguments in calls:

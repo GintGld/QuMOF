@@ -322,7 +322,15 @@ def call_role(
             if not (retry and ledger.extra_available):
                 raise
             if exc.code in REPAIRABLE and text is not None:
-                messages = [*messages, {"role": "assistant", "content": text}, {"role": "user", "content": f"The output was rejected ({exc.code}: {exc.detail}). " "Return one corrected, complete JSON object."}]
+                messages = [
+                    *messages,
+                    {"role": "assistant", "content": text},
+                    {
+                        "role": "user",
+                        "content": f"The output was rejected ({exc.code}: {exc.detail}). "
+                        "Return one corrected, complete JSON object.",
+                    },
+                ]
             purpose = "retry"
             continue
         meta = {

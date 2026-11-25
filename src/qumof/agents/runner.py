@@ -631,7 +631,7 @@ def build_graph(nodes: dict, routes: dict, engine: str = "auto"):
             from langgraph.graph import END, START, StateGraph
         except ImportError:
             if engine == "langgraph":
-                raise PipelineError("LANGGRAPH_NOT_INSTALLED", "pip install -e .[agents]")
+                raise PipelineError("LANGGRAPH_NOT_INSTALLED", "pip install -e .[agents]")  # noqa: B904
         else:
             graph = StateGraph(AgentState)
             for name, fn in nodes.items():

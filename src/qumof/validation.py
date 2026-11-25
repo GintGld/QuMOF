@@ -208,7 +208,9 @@ def validate_structure(spec, calculation: dict, built_geometry: dict) -> dict:
     checks["cell_distortion"] = {
         "status": StageStatus.COMPLETED.value,
         "tool": "qumof.validation",
-        "length_change_percent": [round(100 * (b - a) / a, 3) for a, b in zip(l0, l1, strict=False)],
+        "length_change_percent": [
+            round(100 * (b - a) / a, 3) for a, b in zip(l0, l1, strict=False)
+        ],
         "angle_change_deg": [round(b - a, 3) for a, b in zip(a0, a1, strict=False)],
     }
     cif = write_cif(

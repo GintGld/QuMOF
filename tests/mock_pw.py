@@ -25,7 +25,7 @@ def namelist_value(text, key, default=None):
 
 def main():
     path = sys.argv[sys.argv.index("-in") + 1]
-    text = open(path).read()
+    text = open(path).read()  # noqa: SIM115
     modes = set(filter(None, os.environ.get("MOCK_PW_MODE", "").split(",")))
     if "crash" in modes:
         sys.exit("mock pw.x: simulated crash")
@@ -37,7 +37,7 @@ def main():
     lattice = [[float(x) for x in lines[i + k].split()] for k in (1, 2, 3)]
     j = lines.index("ATOMIC_POSITIONS angstrom")
     nat = int(namelist_value(text, "nat", ""))  # missing key -> ValueError
-    atoms = [(l.split()[0], [float(x) for x in l.split()[1:4]]) for l in lines[j + 1 : j + 1 + nat]]
+    atoms = [(l.split()[0], [float(x) for x in l.split()[1:4]]) for l in lines[j + 1 : j + 1 + nat]]  # noqa: E741
 
     out = [
         "     Program PWSCF v.7.2 starts on  1Jan2026 at  0: 0: 0",
@@ -74,7 +74,9 @@ def main():
     for p in range(len(n_pos)):
         for q in range(p, len(n_pos)):
             if p != q:
-                energy += J_NODE_RY * sum(a * b for a, b in zip(nodes[p], nodes[q], strict=False)) * scale
+                energy += (
+                    J_NODE_RY * sum(a * b for a, b in zip(nodes[p], nodes[q], strict=False)) * scale
+                )
             else:  # an N meeting its own periodic image at one Zn
                 energy += J_NODE_RY * sum(a * (a - 1) // 2 for a in nodes[p]) * scale
             for img in images:

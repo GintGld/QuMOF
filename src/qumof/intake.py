@@ -387,8 +387,10 @@ def select_topologies(spec: ProjectSpec, selected, keep_fingerprint: bool = Fals
         return spec
     if not keep:
         raise PipelineError("NO_TOPOLOGY_SELECTED")
+
     def rows(rs):
         return [r for r in rs if r.get("topology_id") in keep]
+
     config = copy.deepcopy(spec.config)
     config["topology_screen"]["retain"] = keep
     fields = dict(

@@ -65,7 +65,9 @@ def canonical(topology, bits):
 
 def solve_linear_system(matrix, rhs):
     n = len(rhs)
-    augmented = [[Fraction(x) for x in row] + [Fraction(b)] for row, b in zip(matrix, rhs, strict=False)]
+    augmented = [
+        [Fraction(x) for x in row] + [Fraction(b)] for row, b in zip(matrix, rhs, strict=False)
+    ]
     for col in range(n):
         pivot = next((r for r in range(col, n) if augmented[r][col]), None)
         if pivot is None:
@@ -76,7 +78,9 @@ def solve_linear_system(matrix, rhs):
         for r in range(n):
             if r != col:
                 scale = augmented[r][col]
-                augmented[r] = [a - scale * b for a, b in zip(augmented[r], augmented[col], strict=False)]
+                augmented[r] = [
+                    a - scale * b for a, b in zip(augmented[r], augmented[col], strict=False)
+                ]
     return [row[-1] for row in augmented]
 
 
@@ -85,7 +89,8 @@ def fit_linear(x_rows, y_values):
     n = len(x_rows[0])
     gram = [[sum(Fraction(x[i]) * x[j] for x in x_rows) for j in range(n)] for i in range(n)]
     rhs = [
-        sum(Fraction(x[i]) * Fraction(str(y)) for x, y in zip(x_rows, y_values, strict=False)) for i in range(n)
+        sum(Fraction(x[i]) * Fraction(str(y)) for x, y in zip(x_rows, y_values, strict=False))
+        for i in range(n)
     ]
     return solve_linear_system(gram, rhs)
 

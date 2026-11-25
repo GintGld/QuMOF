@@ -65,7 +65,8 @@ def fingerprint(geometry: dict, magnetic_label=None, bond_tolerance_A: float = 0
     structure = {
         "lattice": lattice,
         "atoms": [
-            {"element": e, "frac": tuple(f)} for e, f in zip(elements, geometry["frac_coords"], strict=False)
+            {"element": e, "frac": tuple(f)}
+            for e, f in zip(elements, geometry["frac_coords"], strict=False)
         ],
     }
     radii = [COVALENT_RADII_A.get(e, 1.5) for e in elements]
@@ -92,7 +93,7 @@ def equivalent(
     ):
         return False
     lattice = g1["lattice_A"]
-    bins = [max(1, int(l / max(2 * tol_A, 1.0))) for l in l1]
+    bins = [max(1, int(l / max(2 * tol_A, 1.0))) for l in l1]  # noqa: E741
     grid = {}
     for idx, (el, f) in enumerate(zip(g1["elements"], g1["frac_coords"], strict=False)):
         key = (el, *tuple(int(f[k] % 1.0 * bins[k]) % bins[k] for k in range(3)))

@@ -341,8 +341,8 @@ class Evaluator:
             "nelectron": int(cell.nelectron),
             "mesh": [int(x) for x in cell.mesh],
             "kmesh": list(kmesh),
-            "spin_2S": int(cell.spin), # pyright: ignore[reportArgumentType]  # pyscf types Cell.spin as Optional; build() always sets it
-        }  
+            "spin_2S": int(cell.spin),  # pyright: ignore[reportArgumentType]  # pyscf types Cell.spin as Optional; build() always sets it
+        }
         if not mf.converged:
             raise SCFNotConverged(f"SCF not converged after {mf.max_cycle} cycles")
         self.dm_last = _host(mf.make_rdm1())
@@ -445,7 +445,7 @@ def _relax(job: dict, evaluator: Evaluator, log):
     trajectory, last = [], {}
 
     class PySCFCalculator(Calculator):
-        implemented_properties = ["energy", "free_energy", "forces", "stress"]
+        implemented_properties = ["energy", "free_energy", "forces", "stress"]  # noqa: RUF012
 
         def calculate(self, atoms=None, properties=("energy",), system_changes=all_changes):
             super().calculate(atoms, properties, system_changes)

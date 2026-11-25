@@ -46,7 +46,7 @@ def _candidate_nets(db, topo_dir: str, cn: int, declared):
     names, skipped = [], 0
     for path in sorted(glob.glob(os.path.join(topo_dir, "*.cgd"))):
         cns = [
-            int(m.group(1)) for m in re.finditer(r"^\s*NODE\s+\S+\s+(\d+)", open(path).read(), re.M)
+            int(m.group(1)) for m in re.finditer(r"^\s*NODE\s+\S+\s+(\d+)", open(path).read(), re.M)  # noqa: SIM115
         ]
         if cns and set(cns) == {cn}:
             names.append(os.path.basename(path)[:-4])
@@ -181,7 +181,7 @@ def run(job: dict, out_dir: str) -> dict:
         accepted.append((rmsd, name, topo, row))
     accepted.sort(key=lambda a: (a[0], a[1]))
     built = []
-    for rmsd, name, topo, row in accepted[: job["max_candidates"]]:
+    for rmsd, name, topo, row in accepted[: job["max_candidates"]]:  # noqa: B007
         try:
             builder = pm.Builder()
             node_bbs = {int(t): node for t in topo.unique_node_types}
@@ -202,7 +202,7 @@ def run(job: dict, out_dir: str) -> dict:
             built.append(
                 {**row, "status": "BUILD_FAILED", "error": f"{type(exc).__name__}: {exc}"[:300]}
             )
-    for rmsd, name, topo, row in accepted[job["max_candidates"] :]:
+    for rmsd, name, topo, row in accepted[job["max_candidates"] :]:  # noqa: B007
         rejected.append({**row, "reason": "BEYOND_MAX_CANDIDATES"})
     substituents = {}
     for block_id, spec in (job.get("substituents") or {}).items():
@@ -230,7 +230,7 @@ def main(argv) -> int:
     if len(argv) != 2:
         print("usage: pormake_worker.py job.json", file=sys.stderr)
         return 2
-    job = json.load(open(argv[1]))
+    job = json.load(open(argv[1]))  # noqa: SIM115
     try:
         result = run(job, os.getcwd())
     except Exception as exc:

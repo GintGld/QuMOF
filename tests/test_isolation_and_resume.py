@@ -15,10 +15,8 @@ _events = None
 
 
 def _hook(event, args):
-    if (
-        (_events is not None
-        and event in ("open", "import", "subprocess.Popen"))
-        or (_events is not None and event.startswith("socket."))
+    if (_events is not None and event in ("open", "import", "subprocess.Popen")) or (
+        _events is not None and event.startswith("socket.")
     ):
         _events.append((event, args))
 
@@ -77,7 +75,7 @@ def test_rerun_reuses_every_stage_and_never_resubmits(tmp_path):
     )
     assert first["artifact_id"] == second["artifact_id"]
     assert _state(tmp_path / "run")["counters"]["evaluator_submissions"] == 1
-    events = [json.loads(l) for l in (tmp_path / "run/events.jsonl").read_text().splitlines()]
+    events = [json.loads(l) for l in (tmp_path / "run/events.jsonl").read_text().splitlines()]  # noqa: E741
     assert sum(e["event"] == "stage_reused" for e in events) == len(STAGES)
 
 

@@ -159,7 +159,7 @@ def spec_from_recipe(recipe: dict) -> dict:
             "license": None,
         }
     ]
-    for _i, l in enumerate(recipe["swappable_linkers"]):
+    for _i, l in enumerate(recipe["swappable_linkers"]):  # noqa: E741
         blocks.append(
             {
                 "id": l["id"],
@@ -900,7 +900,7 @@ def validate_physical_project(spec) -> dict:
     for e in errors:
         checks.append({"check": e["check"], "passed": False})
     if not errors:
-        for tid, topo in spec.topologies.items():
+        for tid, topo in spec.topologies.items():  # noqa: B007
             local_checks, local_errors = topology_checks(spec, topo)
             checks += local_checks
             errors += local_errors
@@ -938,7 +938,7 @@ def validate_physical_project(spec) -> dict:
                             f"{[n for n in names if not is_transferable(n)]}",
                         )
                     )
-        for tid, cells in transfers.items():
+        for tid, cells in transfers.items():  # noqa: B007
             for cell in cells:
                 local_checks, local_errors = topology_checks(spec, cell)
                 checks += local_checks

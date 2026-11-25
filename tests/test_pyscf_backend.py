@@ -22,7 +22,7 @@ import numpy as np  # noqa: E402
 from pyscf_toy import write_pyscf_toy_project  # noqa: E402
 
 from qumof import dft  # noqa: E402
-from qumof import pyscf_worker as worker
+from qumof import pyscf_worker as worker  # noqa: E402
 from qumof.intake import load_project, validate_project  # noqa: E402
 from qumof.orchestrator import run_pipeline  # noqa: E402
 from qumof.store import RunStore  # noqa: E402

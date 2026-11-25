@@ -154,10 +154,10 @@ def render(rows: list) -> str:
     ]
     for r in rows:
         d, a = r["deterministic"], r["agents"]
+
         def acc(x):
-            return (
-                    "n/a" if not x else ("PASS" if not x["failed"] else f"FAIL {len(x['failed'])}")
-                )
+            return "n/a" if not x else ("PASS" if not x["failed"] else f"FAIL {len(x['failed'])}")
+
         same = (
             a["agrees_with_deterministic"] and a["agrees_with_deterministic"]["corrected_ranking"]
         )

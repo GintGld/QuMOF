@@ -18,7 +18,7 @@ from qumof.orchestrator import run_pipeline  # noqa: E402
 
 
 def read_jsonl(path):
-    return [json.loads(l) for l in Path(path).read_text().splitlines() if l.strip()]
+    return [json.loads(l) for l in Path(path).read_text().splitlines() if l.strip()]  # noqa: E741
 
 
 def harness_json(rel):

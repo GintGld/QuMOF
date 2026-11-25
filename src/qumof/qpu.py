@@ -130,7 +130,10 @@ def hardware_benchmark(
         # the compiled circuit implements the simulated evolution
         if run["ideal_probabilities"] is not None:
             reference = [abs(a) ** 2 for a in evolve(sim["optimal_parameters"], scaled, pairs)]
-            mismatch = max(abs(run["ideal_probabilities"][u] - p) for u, p in zip(index, reference, strict=False))
+            mismatch = max(
+                abs(run["ideal_probabilities"][u] - p)
+                for u, p in zip(index, reference, strict=False)
+            )
         samples = [(tuple(int(c) for c in reversed(bits)), n) for bits, n in run["counts"].items()]
         feasible = [(s, n) for s, n in samples if sum(s) == k]
         n_shots = sum(n for _, n in samples)

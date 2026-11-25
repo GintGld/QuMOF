@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from fixture_core import *
+from fixture_core import *  # noqa: F403
 
 
 def main():
@@ -17,13 +17,13 @@ def main():
     )
     parser.add_argument("--out", default=None)
     args = parser.parse_args()
-    topologies = read_json(ROOT / "data/topologies.json")
-    models = read_json(ROOT / "data/model_candidates.json")["candidates"]
-    training = read_jsonl(ROOT / ("data/" + args.case + "_training.jsonl"))
-    development = read_jsonl(ROOT / ("data/" + args.case + "_development.jsonl"))
-    check_energy_compatibility(training + development)
+    topologies = read_json(ROOT / "data/topologies.json")  # noqa: F405
+    models = read_json(ROOT / "data/model_candidates.json")["candidates"]  # noqa: F405
+    training = read_jsonl(ROOT / ("data/" + args.case + "_training.jsonl"))  # noqa: F405
+    development = read_jsonl(ROOT / ("data/" + args.case + "_development.jsonl"))  # noqa: F405
+    check_energy_compatibility(training + development)  # noqa: F405
     for row in training + development:
-        validate_bits(row["bits"])
+        validate_bits(row["bits"])  # noqa: F405
     report = {
         "provenance": "SYNTHETIC",
         "runtime_agents_enabled": False,
@@ -39,14 +39,14 @@ def main():
         results = []
         for model in models:
             inds = model["feature_indices"]
-            x = [[features(topo, r["bits"])[i] for i in inds] for r in tr]
+            x = [[features(topo, r["bits"])[i] for i in inds] for r in tr]  # noqa: F405
             try:
-                coef = fit_linear(x, [r["energy_eV"] for r in tr])
+                coef = fit_linear(x, [r["energy_eV"] for r in tr])  # noqa: F405
             except ValueError as e:
                 results.append({"model": model["id"], "status": str(e)})
                 continue
             errors = [
-                predict(topo, r["bits"], inds, coef) - Fraction(str(r["energy_eV"])) for r in dv
+                predict(topo, r["bits"], inds, coef) - Fraction(str(r["energy_eV"])) for r in dv  # noqa: F405
             ]
             results.append(
                 {
@@ -55,36 +55,36 @@ def main():
                     "n_parameters": len(coef),
                     "indices": inds,
                     "coefficients_exact": [str(c) for c in coef],
-                    "development_rmse_eV": rmse(errors),
+                    "development_rmse_eV": rmse(errors),  # noqa: F405
                 }
             )
         passing = [r for r in results if r["status"] == "OK" and r["development_rmse_eV"] <= 1e-10]
         if not passing:
             raise RuntimeError("MODEL_INADEQUATE: " + name)
         selected = min(passing, key=lambda r: (r["n_parameters"], r["model"]))
-        coefficients = list(map(Fraction, selected["coefficients_exact"]))
+        coefficients = list(map(Fraction, selected["coefficients_exact"]))  # noqa: F405
         by_orbit = {}
-        for b in feasible_states():
-            key = name + ":" + canonical(topo, b)
-            base = predict(topo, b, selected["indices"], coefficients)
+        for b in feasible_states():  # noqa: F405
+            key = name + ":" + canonical(topo, b)  # noqa: F405
+            base = predict(topo, b, selected["indices"], coefficients)  # noqa: F405
             row = {
                 "orbit_id": key,
                 "bits": list(b),
                 "base_energy_eV": float(base),
-                "corrected_energy_eV": float(base + correction(name, b, args.correction, topo)),
+                "corrected_energy_eV": float(base + correction(name, b, args.correction, topo)),  # noqa: F405
             }
-            if key not in by_orbit or bit_string(b) < bit_string(by_orbit[key]["bits"]):
+            if key not in by_orbit or bit_string(b) < bit_string(by_orbit[key]["bits"]):  # noqa: F405
                 by_orbit[key] = row
         ordered = sorted(by_orbit.values(), key=lambda r: (r["base_energy_eV"], r["orbit_id"]))
         cutoff = ordered[min(4, len(ordered) - 1)]["base_energy_eV"]
         selected_pool = [r for r in ordered if r["base_energy_eV"] <= cutoff + 1e-12]
         scored = [
             (
-                predict(topo, b, selected["indices"], coefficients)
-                + correction(name, b, args.correction, topo),
+                predict(topo, b, selected["indices"], coefficients)  # noqa: F405
+                + correction(name, b, args.correction, topo),  # noqa: F405
                 b,
             )
-            for b in feasible_states()
+            for b in feasible_states()  # noqa: F405
         ]
         minimum = min(e for e, b in scored)
         best = [b for e, b in scored if e == minimum]
@@ -93,8 +93,8 @@ def main():
             "selected_model": selected["model"],
             "n_feasible": len(scored),
             "minimum_energy_eV": float(minimum),
-            "minimizing_bitstrings": sorted(bit_string(b) for b in best),
-            "ground_state_orbits": sorted({name + ":" + canonical(topo, b) for b in best}),
+            "minimizing_bitstrings": sorted(bit_string(b) for b in best),  # noqa: F405
+            "ground_state_orbits": sorted({name + ":" + canonical(topo, b) for b in best}),  # noqa: F405
             "base_model_encoding": "QUBO" if len(coefficients) == 3 else "HUBO",
             "correction_application": "post-solve synthetic score; not compiled into base QUBO",
             "minimum_scope": "exhaustive corrected reference over all legal states",
@@ -102,7 +102,7 @@ def main():
             "selected_pool": selected_pool,
         }
         if len(coefficients) == 3 and args.correction == "none":
-            qubo = compile_pair_qubo(topo, coefficients)
+            qubo = compile_pair_qubo(topo, coefficients)  # noqa: F405
             result["qubo"] = qubo
         report["topologies"][name] = result
     report["ranked_pool"] = sorted(
@@ -120,9 +120,9 @@ def main():
     destination = (
         Path(args.out)
         if args.out
-        else ROOT / "reference_outputs" / (args.case + "_" + args.correction + ".json")
+        else ROOT / "reference_outputs" / (args.case + "_" + args.correction + ".json")  # noqa: F405
     )
-    write_json(destination, report)
+    write_json(destination, report)  # noqa: F405
     print(
         json.dumps(
             {

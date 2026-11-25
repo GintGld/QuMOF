@@ -28,7 +28,13 @@ KEY_SCALE = 1000
 
 def _key(slot_type, slot: dict, diag, period) -> tuple:
     """Slot position in parent fractional coordinates (integer 1e-3 units) modulo the working-cell period."""
-    return (slot_type, *tuple(round(slot["centroid_frac"][k] * diag[k] * KEY_SCALE) % (period[k] * KEY_SCALE) for k in range(3)))
+    return (
+        slot_type,
+        *tuple(
+            round(slot["centroid_frac"][k] * diag[k] * KEY_SCALE) % (period[k] * KEY_SCALE)
+            for k in range(3)
+        ),
+    )
 
 
 def slot_map(working: dict, transfer: dict) -> list | None:

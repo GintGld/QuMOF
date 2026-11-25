@@ -175,7 +175,8 @@ def nelder_mead(f, x0: list, step: float, max_evaluations: int) -> tuple[list, f
                 simplex[-1], values[-1] = contract, fc
             else:
                 simplex = [simplex[0]] + [
-                    [b + 0.5 * (p - b) for p, b in zip(pt, simplex[0], strict=False)] for pt in simplex[1:]
+                    [b + 0.5 * (p - b) for p, b in zip(pt, simplex[0], strict=False)]
+                    for pt in simplex[1:]
                 ]
                 values = [values[0]] + [f(pt) for pt in simplex[1:]]
                 evals += len(simplex) - 1

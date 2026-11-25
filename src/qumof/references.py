@@ -30,16 +30,26 @@ def mixture_balance(target: dict, references: list) -> dict | None:
     for size in range(1, min(len(references), len(elements)) + 1):
         for subset in combinations(range(len(references)), size):
             cols = [columns[i] for i in subset]
-            gram = [[sum(a * b for a, b in zip(ci, cj, strict=False)) for cj in cols] for ci in cols]
+            gram = [
+                [sum(a * b for a, b in zip(ci, cj, strict=False)) for cj in cols] for ci in cols
+            ]
             try:
-                coef = solve_exact(gram, [sum(a * b for a, b in zip(ci, rhs, strict=False)) for ci in cols])
+                coef = solve_exact(
+                    gram, [sum(a * b for a, b in zip(ci, rhs, strict=False)) for ci in cols]
+                )
             except PipelineError:
                 continue  # dependent columns: covered by a smaller subset
             if any(c < 0 for c in coef):
                 continue
-            if [sum(c * col[e] for c, col in zip(coef, cols, strict=False)) for e in range(len(elements))] != rhs:
+            if [
+                sum(c * col[e] for c, col in zip(coef, cols, strict=False))
+                for e in range(len(elements))
+            ] != rhs:
                 continue  # the composition is not reachable with this subset
-            energy = sum(c * Fraction(references[i]["energy_exact"]) for c, i in zip(coef, subset, strict=False))
+            energy = sum(
+                c * Fraction(references[i]["energy_exact"])
+                for c, i in zip(coef, subset, strict=False)
+            )
             key = (energy, tuple(references[i]["reference_id"] for i in subset))
             if best is None or key < best[0]:
                 best = (

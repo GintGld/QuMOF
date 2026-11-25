@@ -143,7 +143,9 @@ def exact_diagonalization(artifact: dict) -> dict:
         sector={"alpha": nelec[0], "beta": nelec[1]},
         n_determinants=len(dets),
         ground_state_weights={
-            str(d): round(float(c) ** 2, 12) for d, c in zip(dets, vectors[:, 0], strict=False) if c**2 > 1e-8
+            str(d): round(float(c) ** 2, 12)
+            for d, c in zip(dets, vectors[:, 0], strict=False)
+            if c**2 > 1e-8
         },
         qubit_ordering=ORDERING,
         wall_time_s=round(time.perf_counter() - t0, 4),
@@ -286,7 +288,7 @@ def sqd_simulation(
     raw = []
     for _ in range(shots):
         x, acc = rng.random() * total, 0.0
-        for d, w in support:
+        for d, w in support:  # noqa: B007
             acc += w
             if x <= acc:
                 break

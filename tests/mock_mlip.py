@@ -33,16 +33,22 @@ def mirror_pw(item):
         for b in (-1, 0, 1)
         for d in (-1, 0, 1)
     ]
+
     def contacts(u, v):
         return sum(
             math.dist(u, [v[c] + img[c] for c in range(3)]) < pw.NODE_RADIUS_A for img in images
         )
+
     nodes = [[contacts(n, r) for r in zn_pos] for n in n_pos]
     scale = 1 + pw.KAPPA / 80.0**2
     for p in range(len(n_pos)):
         for q in range(p, len(n_pos)):
             if p != q:
-                energy += pw.J_NODE_RY * sum(a * b for a, b in zip(nodes[p], nodes[q], strict=False)) * scale
+                energy += (
+                    pw.J_NODE_RY
+                    * sum(a * b for a, b in zip(nodes[p], nodes[q], strict=False))
+                    * scale
+                )
             else:
                 energy += pw.J_NODE_RY * sum(a * (a - 1) // 2 for a in nodes[p]) * scale
             for img in images:
@@ -76,7 +82,7 @@ def energy(item):
 
 def main(argv):
     probe = argv[0] == "--probe"
-    batch = json.load(open(argv[-1]))
+    batch = json.load(open(argv[-1]))  # noqa: SIM115
     identity = {
         "engine": "mock",
         "model": batch["protocol"]["model"],
@@ -84,7 +90,7 @@ def main(argv):
         "worker_version": "mock",
     }
     if probe:
-        json.dump({"identity": identity}, open("probe.json", "w"))
+        json.dump({"identity": identity}, open("probe.json", "w"))  # noqa: SIM115
         return 0
     results = {}
     for item in batch["structures"]:
@@ -103,7 +109,7 @@ def main(argv):
             "wall_time_s": 0.0,
             "relaxed": {k: item[k] for k in ("lattice_A", "elements", "frac_coords")},
         }
-    json.dump({"identity": identity, "results": results}, open("results.json", "w"))
+    json.dump({"identity": identity, "results": results}, open("results.json", "w"))  # noqa: SIM115
     return 0
 
 

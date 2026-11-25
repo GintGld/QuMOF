@@ -420,7 +420,7 @@ def build_report(spec, store, ctx, detail, status) -> dict:
         if "competition" in ctx
         else StageStatus.NOT_RUN.value,
         structural_checks=detail.get("validation", {}).get("checks"),
-        # TODO: Task 09 — benchmark sections (Kang arrangements, Cai topology competition, Fe–MOF-74 electronic
+        # TODO: Task 09 — benchmark sections (Kang arrangements, Cai topology competition, Fe–MOF-74 electronic  # noqa: RUF003
         # TODO: workflow) and ablations; live literature review instead of the static manifest.
         literature={
             "mode": lit.get("mode"),

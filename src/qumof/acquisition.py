@@ -68,7 +68,9 @@ def _scores(topo, model: dict, pool: list, labelled: list) -> tuple[list, list]:
     for orbit in pool:
         x = feature_vector(topo, bits_of(orbit), names)
         pred = sum((c * v for c, v in zip(coef, x, strict=False)), Fraction(0))
-        committee = [float(sum((c * v for c, v in zip(f, x, strict=False)), Fraction(0))) for f in folds]
+        committee = [
+            float(sum((c * v for c, v in zip(f, x, strict=False)), Fraction(0))) for f in folds
+        ]
         mean = sum(committee) / len(committee)
         rows.append(
             {
@@ -81,7 +83,11 @@ def _scores(topo, model: dict, pool: list, labelled: list) -> tuple[list, list]:
             }
         )
     known = [
-        [float(v) for v, n in zip(feature_vector(topo, bits, names), names, strict=False) if n != "constant"]
+        [
+            float(v)
+            for v, n in zip(feature_vector(topo, bits, names), names, strict=False)
+            if n != "constant"
+        ]
         for bits in labelled
     ]
     return rows, known
