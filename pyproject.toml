@@ -57,6 +57,7 @@ pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
 
+# TODO to add to readme "git config blame.ignoreRevsFile .git-blame-ignore-revs -- each dev runs this once"
 [tool.ruff]
 target-version = "py312"        # match requires-python; UP fixes depend on this
 line-length = 100
