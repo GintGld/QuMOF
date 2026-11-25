@@ -66,7 +66,7 @@ def select_pool(spec, candidate_set: dict) -> dict:
     cutoff = energies[min(k, len(rows)) - 1]
     groups = {e: idx for idx, e in enumerate(sorted(set(energies)))}
     pool = []
-    for rank, (row, energy) in enumerate(zip(rows, energies), start=1):
+    for rank, (row, energy) in enumerate(zip(rows, energies, strict=False), start=1):
         if energy > cutoff:
             break
         n_deg = energies.count(energy)

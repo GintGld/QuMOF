@@ -114,7 +114,7 @@ class ReferenceDataset:
 
             elements = [
                 {chemical_symbols[int(a)] for a in set(z[p : p + n].tolist())}
-                for p, n in zip(ptr, num)
+                for p, n in zip(ptr, num, strict=False)
             ]
         else:
             path = Path(self.cfg["path"]).expanduser()
@@ -175,11 +175,11 @@ def project_descriptors(spec) -> dict:
 def match_score(row: dict, project: dict) -> tuple[int, list]:
     score, on = 0, []
     if row["topology"] and row["topology"] in project["nets"]:
-        score, on = score + 2, on + ["topology"]
+        score, on = score + 2, [*on, "topology"]
     if project["elements"] and row["elements"] == project["elements"]:
-        score, on = score + 2, on + ["element_set"]
+        score, on = score + 2, [*on, "element_set"]
     elif project["metals"] & set(row["metals"]):
-        score, on = score + 1, on + ["metal"]
+        score, on = score + 1, [*on, "metal"]
     return score, on
 
 
@@ -251,7 +251,8 @@ def gather_datasets(spec, controls, report: dict, pipeline_dir, candidates: list
             gaps += problems
             continue
         rows, pinned = ds.rows(), set(cfg.get("pinned") or [])
-        is_pinned = lambda r: r["row_id"] in pinned or (r["name"] or "").split("_")[0] in pinned
+        def is_pinned(r):
+            return r["row_id"] in pinned or (r["name"] or "").split("_")[0] in pinned
         found = {
             p
             for r in rows

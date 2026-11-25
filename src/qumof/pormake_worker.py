@@ -87,7 +87,7 @@ def _substituent_rule(bb, element_root: str, replace_element: str):
             f"{element_root} root of {bb.name} must bond to exactly one framework atom"
         )
     anchor = anchors[0]
-    group = [root] + sorted(j for j in bonds[root] if j != anchor and symbols[j] == "H")
+    group = [root, *sorted(j for j in bonds[root] if j != anchor and symbols[j] == "H")]
     xs = [i for i, s in enumerate(symbols) if s == "X"]
     u = pos[root] - pos[anchor]
     u /= np.linalg.norm(u)

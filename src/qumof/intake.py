@@ -361,7 +361,7 @@ def topology_checks(spec: ProjectSpec, topo: TopologySpec) -> tuple[list, list]:
                 label,
             )
         if weights and len(weights) == len(topo.pairs_d1):
-            w = {tuple(sorted(t)): x for t, x in zip(topo.pairs_d1, weights)}
+            w = {tuple(sorted(t)): x for t, x in zip(topo.pairs_d1, weights, strict=False)}
             check(
                 f"{tid}:symmetry_preserves_pair_weights",
                 all(
@@ -387,7 +387,8 @@ def select_topologies(spec: ProjectSpec, selected, keep_fingerprint: bool = Fals
         return spec
     if not keep:
         raise PipelineError("NO_TOPOLOGY_SELECTED")
-    rows = lambda rs: [r for r in rs if r.get("topology_id") in keep]
+    def rows(rs):
+        return [r for r in rs if r.get("topology_id") in keep]
     config = copy.deepcopy(spec.config)
     config["topology_screen"]["retain"] = keep
     fields = dict(

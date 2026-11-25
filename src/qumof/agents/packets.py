@@ -585,7 +585,7 @@ def candidate_quality(spec, report: dict, pipeline_dir, assessment: dict | None)
         per[tid] = {
             "n_evaluated": len(mine),
             "spearman_surrogate_vs_evaluated": _spearman(sur, ev),
-            "max_abs_surrogate_error_eV": max(abs(x - y) for x, y in zip(sur, ev)),
+            "max_abs_surrogate_error_eV": max(abs(x - y) for x, y in zip(sur, ev, strict=False)),
             "surrogate_best": mine[s_best]["configuration_id"],
             "evaluated_best": mine[min(range(len(mine)), key=lambda i: (ev[i], i))][
                 "configuration_id"

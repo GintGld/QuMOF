@@ -55,7 +55,7 @@ def qaoa_circuit(job: dict, params: list):
 
     n = job["n_qubits"]
     qc = dicke(n, job["n_ones"])
-    for gamma, beta in zip(params[0::2], params[1::2]):
+    for gamma, beta in zip(params[0::2], params[1::2], strict=False):
         for sites, coeff in job["terms"]:
             angle = -gamma * coeff
             if len(sites) == 1:

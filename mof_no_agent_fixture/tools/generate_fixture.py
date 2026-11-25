@@ -1,7 +1,9 @@
 """Regenerate all numerical data deterministically. Test-author utility, not a learner."""
 
+import functools
 import hashlib
 import json
+import operator
 from fractions import Fraction
 from itertools import combinations
 
@@ -232,7 +234,7 @@ def main():
             {
                 "status": "generated",
                 "raw_candidates": len(candidates),
-                "orbits": {k: len(sum(v.values(), [])) for k, v in splits.items()},
+                "orbits": {k: len(functools.reduce(operator.iadd, v.values(), [])) for k, v in splits.items()},
             }
         )
     )

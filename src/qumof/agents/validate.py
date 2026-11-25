@@ -128,7 +128,8 @@ def validate_setup(proposal: dict, packet: dict) -> dict:
         for p in proposal["plans"]
         if p["construction_plan_id"] in options
     ]
-    order = lambda fid: frameworks.index(fid) if fid in frameworks else len(frameworks)
+    def order(fid):
+        return frameworks.index(fid) if fid in frameworks else len(frameworks)
     return _result(
         errors,
         plans=sorted(plans, key=lambda p: order(p["framework_id"])),

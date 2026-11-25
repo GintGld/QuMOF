@@ -27,7 +27,7 @@ def _lattice_params(lattice) -> tuple:
                     -1.0,
                     min(
                         1.0,
-                        sum(a * b for a, b in zip(u, v))
+                        sum(a * b for a, b in zip(u, v, strict=False))
                         / (math.sqrt(sum(a * a for a in u)) * math.sqrt(sum(b * b for b in v))),
                     ),
                 )
@@ -65,7 +65,7 @@ def fingerprint(geometry: dict, magnetic_label=None, bond_tolerance_A: float = 0
     structure = {
         "lattice": lattice,
         "atoms": [
-            {"element": e, "frac": tuple(f)} for e, f in zip(elements, geometry["frac_coords"])
+            {"element": e, "frac": tuple(f)} for e, f in zip(elements, geometry["frac_coords"], strict=False)
         ],
     }
     radii = [COVALENT_RADII_A.get(e, 1.5) for e in elements]
@@ -87,21 +87,21 @@ def equivalent(
     if Counter(g1["elements"]) != Counter(g2["elements"]):
         return False
     (l1, a1), (l2, a2) = _lattice_params(g1["lattice_A"]), _lattice_params(g2["lattice_A"])
-    if any(abs(x - y) > lattice_rel_tol * x for x, y in zip(l1, l2)) or any(
-        abs(x - y) > 1.0 for x, y in zip(a1, a2)
+    if any(abs(x - y) > lattice_rel_tol * x for x, y in zip(l1, l2, strict=False)) or any(
+        abs(x - y) > 1.0 for x, y in zip(a1, a2, strict=False)
     ):
         return False
     lattice = g1["lattice_A"]
     bins = [max(1, int(l / max(2 * tol_A, 1.0))) for l in l1]
     grid = {}
-    for idx, (el, f) in enumerate(zip(g1["elements"], g1["frac_coords"])):
-        key = (el,) + tuple(int((f[k] % 1.0) * bins[k]) % bins[k] for k in range(3))
+    for idx, (el, f) in enumerate(zip(g1["elements"], g1["frac_coords"], strict=False)):
+        key = (el, *tuple(int(f[k] % 1.0 * bins[k]) % bins[k] for k in range(3)))
         grid.setdefault(key, []).append(idx)
 
     def close(el, f) -> int | None:
         cell = [int(f[k] * bins[k]) % bins[k] for k in range(3)]
         for off in itertools.product((-1, 0, 1), repeat=3):
-            for idx in grid.get((el,) + tuple((cell[k] + off[k]) % bins[k] for k in range(3)), ()):
+            for idx in grid.get((el, *tuple((cell[k] + off[k]) % bins[k] for k in range(3))), ()):
                 g = g1["frac_coords"][idx]
                 d = [f[k] - g[k] - round(f[k] - g[k]) for k in range(3)]
                 if math.sqrt(sum(x * x for x in _frac_to_cart(lattice, d))) <= tol_A:
@@ -110,7 +110,7 @@ def equivalent(
 
     for op in operations:
         used = set()
-        for el, f in zip(g2["elements"], g2["frac_coords"]):
+        for el, f in zip(g2["elements"], g2["frac_coords"], strict=False):
             idx = close(el, _apply(op, f, diag))
             if idx is None or idx in used:
                 break

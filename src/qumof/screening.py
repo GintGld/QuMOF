@@ -186,13 +186,13 @@ def _relaxation_record(spec, topo, deco, geometry, result, max_strain) -> dict:
         _lengths_angles(geometry["lattice_A"]),
         _lengths_angles(result["relaxed"]["lattice_A"]),
     )
-    strain = max([abs(100 * (b - a) / a) for a, b in zip(l0, l1)] + [0.0])
+    strain = max([abs(100 * (b - a) / a) for a, b in zip(l0, l1, strict=False)] + [0.0])
     checks = {
         "converged": result["converged"],
         "topology_retained": mapping["retained"],
         "topology_change_reason": mapping["reason"],
         "max_cell_length_change_percent": round(strain, 3),
-        "max_angle_change_deg": round(max(abs(b - a) for a, b in zip(a0, a1)), 3),
+        "max_angle_change_deg": round(max(abs(b - a) for a, b in zip(a0, a1, strict=False)), 3),
         "max_force_eV_per_A": result["max_force_eV_per_A"],
         "n_steps": result["n_steps"],
     }

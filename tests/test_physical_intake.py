@@ -345,7 +345,7 @@ def test_builder_is_reproducible_and_every_legal_decoration_keeps_counts(toy_run
 
 
 def test_parent_rebuild_is_identical(toy_run):
-    _, run_dir, report = toy_run
+    _, _run_dir, report = toy_run
     construction = report["physical"]["atomic_construction"]["toy_pcu"]
     assert (
         construction["parent_rebuild"] == "COMPLETED"

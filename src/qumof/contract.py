@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from enum import Enum
+from enum import StrEnum
 from fractions import Fraction
 
 SCHEMA_VERSION = "0.1"
 
 
-class StageStatus(str, Enum):
+class StageStatus(StrEnum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     BLOCKED = "BLOCKED"
@@ -26,14 +26,14 @@ class StageStatus(str, Enum):
     NOT_RUN = "NOT_RUN"
 
 
-class JobState(str, Enum):
+class JobState(StrEnum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
 
 
-class StopReason(str, Enum):
+class StopReason(StrEnum):
     CONVERGED_WITHIN_SCOPE = "CONVERGED_WITHIN_SCOPE"
     BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
     MODEL_INADEQUATE = "MODEL_INADEQUATE"

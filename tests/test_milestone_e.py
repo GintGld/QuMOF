@@ -31,7 +31,7 @@ def unvalidated(tmp_path_factory):
 
 
 def test_unvalidated_corrections_stay_benchmark_artifacts_and_ranking_stays_dft_only(unvalidated):
-    spec, run_dir, report = unvalidated
+    _spec, run_dir, report = unvalidated
     detail = report["stage_detail"]["embedding"]
     assert (
         report["stage_status"]["embedding"] == "INCONCLUSIVE"

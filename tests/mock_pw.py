@@ -74,7 +74,7 @@ def main():
     for p in range(len(n_pos)):
         for q in range(p, len(n_pos)):
             if p != q:
-                energy += J_NODE_RY * sum(a * b for a, b in zip(nodes[p], nodes[q])) * scale
+                energy += J_NODE_RY * sum(a * b for a, b in zip(nodes[p], nodes[q], strict=False)) * scale
             else:  # an N meeting its own periodic image at one Zn
                 energy += J_NODE_RY * sum(a * (a - 1) // 2 for a in nodes[p]) * scale
             for img in images:

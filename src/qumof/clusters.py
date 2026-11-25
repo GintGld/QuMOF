@@ -54,7 +54,7 @@ def _apply(op, f) -> tuple:
 
 
 def _ikey(v) -> tuple:
-    return tuple(int(round(x * KEY_SCALE)) for x in v)
+    return tuple(round(x * KEY_SCALE) for x in v)
 
 
 def _wrap_ikey(v) -> tuple:
@@ -75,9 +75,9 @@ def pair_key(op_list, type_a, fa, type_b, fb) -> tuple:
             shift = tuple(math.floor(x + 0.5 / KEY_SCALE) for x in a)
             key = (
                 ta,
-                _ikey(tuple(x - s for x, s in zip(a, shift))),
+                _ikey(tuple(x - s for x, s in zip(a, shift, strict=False))),
                 tb,
-                _ikey(tuple(x - s for x, s in zip(b, shift))),
+                _ikey(tuple(x - s for x, s in zip(b, shift, strict=False))),
             )
             if best is None or key < best:
                 best = key
@@ -96,7 +96,7 @@ def parent_sites(slots: list, diag) -> list:
                 "slot_id": s["slot_id"],
                 "slot_type": s["slot_type"],
                 "absolute": p,
-                "site": tuple(x - c for x, c in zip(p, cell)),
+                "site": tuple(x - c for x, c in zip(p, cell, strict=False)),
                 "cell": cell,
             }
         )

@@ -45,7 +45,7 @@ def primitive_polynomial(it: Iterable[int], k: int) -> dict[tuple[int] | tuple[(
 
 def physical_polynomial(hamiltonian: dict, topo) -> dict:
     poly: dict = {}
-    for name, c in zip(hamiltonian["features"], hamiltonian["coefficients_exact"]):
+    for name, c in zip(hamiltonian["features"], hamiltonian["coefficients_exact"], strict=False):
         poly = poly_add(poly, feature_polynomial(name, topo), Fraction(c))
     return poly
 
@@ -385,7 +385,7 @@ def one_hot_states(n_sites: int, counts_by_species: list) -> list:
         for a, left in enumerate(remaining):
             if left:
                 remaining[a] -= 1
-                rec(prefix + [a], remaining)
+                rec([*prefix, a], remaining)
                 remaining[a] += 1
 
     rec([], list(counts_by_species))

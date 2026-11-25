@@ -143,7 +143,7 @@ def exact_diagonalization(artifact: dict) -> dict:
         sector={"alpha": nelec[0], "beta": nelec[1]},
         n_determinants=len(dets),
         ground_state_weights={
-            str(d): round(float(c) ** 2, 12) for d, c in zip(dets, vectors[:, 0]) if c**2 > 1e-8
+            str(d): round(float(c) ** 2, 12) for d, c in zip(dets, vectors[:, 0], strict=False) if c**2 > 1e-8
         },
         qubit_ordering=ORDERING,
         wall_time_s=round(time.perf_counter() - t0, 4),
@@ -206,12 +206,12 @@ def vqe_simulation(artifact: dict, seed: int = 0, max_iterations: int = 200) -> 
     hf = sum(1 << (2 * p) for p in range(nelec[0])) | sum(1 << (2 * p + 1) for p in range(nelec[1]))
     reference = np.zeros(len(dets))
     reference[dets.index(hf)] = 1.0
-    gens, excitations = _uccsd_generators(norb, nelec, dets)
+    gens, _excitations = _uccsd_generators(norb, nelec, dets)
     calls = {"n": 0}
 
     def state(theta):
         psi = reference
-        for g, t in zip(gens, theta):
+        for g, t in zip(gens, theta, strict=False):
             psi = expm(t * g) @ psi
         return psi
 
@@ -249,7 +249,7 @@ def vqe_simulation(artifact: dict, seed: int = 0, max_iterations: int = 200) -> 
             "converged": bool(opt.success),
         },
         simulator="exact statevector within the particle-number sector (no shot noise)",
-        final_state={str(d): float(c) for d, c in zip(dets, psi) if abs(c) > 1e-10},
+        final_state={str(d): float(c) for d, c in zip(dets, psi, strict=False) if abs(c) > 1e-10},
         wall_time_s=round(time.perf_counter() - t0, 4),
     )
 
@@ -450,6 +450,6 @@ def run_electronic_benchmark(spec: dict, store=None) -> dict:
         note="reproduces a calculation from the literature; it is not agreement with experiment",
     )
     if store is not None:
-        for record in [artifact, report] + flat:
+        for record in [artifact, report, *flat]:
             store.put(record)
     return {"active_space": artifact, "results": results, "report": report}

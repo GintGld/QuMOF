@@ -165,7 +165,7 @@ class QuantumEspressoAdapter:
         return {"ecutwfc_Ry": value, "ecutrho_Ry": float(ratio * Fraction(str(value)))}
 
     def run_args(self, backend) -> list:
-        return backend.command + ["-in", self.input_name]
+        return [*backend.command, "-in", self.input_name]
 
     def env(self, backend):
         return None
@@ -256,7 +256,7 @@ class QuantumEspressoAdapter:
         out.append("ATOMIC_POSITIONS angstrom")
         out += [
             f"  {el} " + " ".join(f"{x:.8f}" for x in r)
-            for el, r in zip(elements, _carts(geometry))
+            for el, r in zip(elements, _carts(geometry), strict=False)
         ]
         out.append("K_POINTS automatic")
         out.append(
@@ -387,9 +387,7 @@ class PySCFAdapter:
     conventions = ("internal_energy", "free_energy", "zero_temperature_extrapolated")
     input_name, output_name = "job.json", "result.json"
     worker = Path(__file__).with_name("pyscf_worker.py")
-    DISPERSIONS = ("none", "d4") + tuple(
-        f"{v}{atm}" for v in ("d3bj", "d3zero", "d3bjm", "d3zerom", "d3op") for atm in ("", "-atm")
-    )
+    DISPERSIONS = ("none", "d4", *tuple(f"{v}{atm}" for v in ("d3bj", "d3zero", "d3bjm", "d3zerom", "d3op") for atm in ("", "-atm")))
 
     def protocol_errors(self, protocol, root: Path, elements, lattices) -> list:
         errors = []
@@ -518,7 +516,7 @@ class PySCFAdapter:
         )
         try:
             proc = subprocess.run(
-                backend.command + [str(self.worker), "--probe", "probe.json"],
+                [*backend.command, str(self.worker), "--probe", "probe.json"],
                 cwd=probe_dir,
                 capture_output=True,
                 text=True,
@@ -556,7 +554,7 @@ class PySCFAdapter:
         return {"ke_cutoff_Ha": value}
 
     def run_args(self, backend) -> list:
-        return backend.command + [str(self.worker), self.input_name]
+        return [*backend.command, str(self.worker), self.input_name]
 
     def env(self, backend) -> dict:
         threads = str(backend.protocol["n_cores"])
@@ -887,7 +885,7 @@ class PeriodicDFTBackend:
             except subprocess.TimeoutExpired:
                 outcome, parsed = {"returncode": None, "stderr": "TIMEOUT"}, None
             wall = time.perf_counter() - start
-            self.store.bump("dft_core_seconds", int(math.ceil(wall * self.protocol["n_cores"])))
+            self.store.bump("dft_core_seconds", math.ceil(wall * self.protocol["n_cores"]))
             scf_ok = bool(parsed and parsed["scf_converged"])
             meta["attempts"].append(
                 {
@@ -1037,7 +1035,7 @@ class PeriodicDFTBackend:
             "lattice": parsed["final_lattice_A"],
             "atoms": [
                 {"element": e, "frac": tuple(f)}
-                for e, f in zip(parsed["final_elements"], parsed["final_frac_coords"])
+                for e, f in zip(parsed["final_elements"], parsed["final_frac_coords"], strict=False)
             ],
         }
         inventory = dict(sorted(Counter(parsed["final_elements"]).items()))
@@ -1105,7 +1103,7 @@ class PeriodicDFTBackend:
                     "lattice": [[round(x, 4) for x in v] for v in parsed["final_lattice_A"]],
                     "atoms": sorted(
                         (e, tuple(round(x, 4) % 1.0 for x in f))
-                        for e, f in zip(parsed["final_elements"], parsed["final_frac_coords"])
+                        for e, f in zip(parsed["final_elements"], parsed["final_frac_coords"], strict=False)
                     ),
                 }
             ),
@@ -1179,7 +1177,7 @@ def difference_convergence_study(spec, backend: PeriodicDFTBackend, geometries: 
     rows = []
     for ecut in series:
         energies = []
-        for geometry, decoration in geometries:
+        for geometry, _decoration in geometries:
             job_id = backend.submit(
                 {**geometry},
                 "scf",

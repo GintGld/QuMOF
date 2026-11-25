@@ -144,7 +144,7 @@ class MLPotentialBackend:
         except subprocess.TimeoutExpired:
             out = {"returncode": None, "stderr": "TIMEOUT"}
         wall = time.perf_counter() - start
-        self.store.bump("ml_core_seconds", int(math.ceil(wall)))
+        self.store.bump("ml_core_seconds", math.ceil(wall))
         return out, wall
 
     def identity(self) -> dict:

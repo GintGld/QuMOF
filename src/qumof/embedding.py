@@ -277,7 +277,7 @@ def _structure(geometry: dict) -> dict:
         "lattice": geometry["lattice_A"],
         "atoms": [
             {"element": e, "frac": tuple(f)}
-            for e, f in zip(geometry["elements"], geometry["frac_coords"])
+            for e, f in zip(geometry["elements"], geometry["frac_coords"], strict=False)
         ],
     }
 
@@ -449,7 +449,7 @@ class ClusterBackend:
         }
         try:
             proc = subprocess.run(
-                self.args + ["input.json"],
+                [*self.args, "input.json"],
                 cwd=job_dir,
                 capture_output=True,
                 text=True,

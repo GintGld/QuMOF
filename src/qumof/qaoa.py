@@ -82,7 +82,7 @@ def apply_mixer(psi: list, pairs_per_edge: list, beta: float) -> None:
 def evolve(params: list, cost: list, pairs_per_edge: list) -> list:
     n = len(cost)
     psi = [complex(1 / math.sqrt(n))] * n
-    for gamma, beta in zip(params[0::2], params[1::2]):
+    for gamma, beta in zip(params[0::2], params[1::2], strict=False):
         for u in range(n):
             psi[u] *= cmath.exp(-1j * gamma * cost[u])
         apply_mixer(psi, pairs_per_edge, beta)
@@ -157,25 +157,25 @@ def nelder_mead(f, x0: list, step: float, max_evaluations: int) -> tuple[list, f
         simplex, values = [simplex[i] for i in order], [values[i] for i in order]
         centroid = [sum(p[k] for p in simplex[:-1]) / (len(simplex) - 1) for k in range(len(x0))]
         worst = simplex[-1]
-        reflect = [c + (c - w) for c, w in zip(centroid, worst)]
+        reflect = [c + (c - w) for c, w in zip(centroid, worst, strict=False)]
         fr = f(reflect)
         evals += 1
         if fr < values[0]:
-            expand = [c + 2 * (c - w) for c, w in zip(centroid, worst)]
+            expand = [c + 2 * (c - w) for c, w in zip(centroid, worst, strict=False)]
             fe = f(expand)
             evals += 1
             simplex[-1], values[-1] = (expand, fe) if fe < fr else (reflect, fr)
         elif fr < values[-2]:
             simplex[-1], values[-1] = reflect, fr
         else:
-            contract = [c + 0.5 * (w - c) for c, w in zip(centroid, worst)]
+            contract = [c + 0.5 * (w - c) for c, w in zip(centroid, worst, strict=False)]
             fc = f(contract)
             evals += 1
             if fc < values[-1]:
                 simplex[-1], values[-1] = contract, fc
             else:
                 simplex = [simplex[0]] + [
-                    [b + 0.5 * (p - b) for p, b in zip(pt, simplex[0])] for pt in simplex[1:]
+                    [b + 0.5 * (p - b) for p, b in zip(pt, simplex[0], strict=False)] for pt in simplex[1:]
                 ]
                 values = [values[0]] + [f(pt) for pt in simplex[1:]]
                 evals += len(simplex) - 1
@@ -198,7 +198,7 @@ def run_qaoa(spec, topo, hamiltonian: dict, encoding: dict, protocol: dict, seed
         evaluate_encoding(encoding, s) for s in states
     ]  # what the device's phase separator implements
     physical = [predict(hamiltonian, topo, s) for s in states]
-    for s, e, p in zip(states, encoded, physical):
+    for s, e, p in zip(states, encoded, physical, strict=False):
         # the penalty vanishes on feasible states, so any difference is a bit-order/ancilla error
         if e != p:
             raise PipelineError(
@@ -213,7 +213,7 @@ def run_qaoa(spec, topo, hamiltonian: dict, encoding: dict, protocol: dict, seed
     p = protocol["layers"]
 
     def expectation(params):
-        return sum(abs(a) ** 2 * c for a, c in zip(evolve(params, cost, pairs), cost))
+        return sum(abs(a) ** 2 * c for a, c in zip(evolve(params, cost, pairs), cost, strict=False))
 
     best_params, best_value, calls = None, None, 0
     for _ in range(protocol["restarts"]):

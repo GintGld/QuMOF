@@ -44,7 +44,7 @@ def c_run(tmp_path_factory):
 
 # -- end to end ---------------------------------------------------------------------------------------------
 def test_two_topologies_rank_on_one_common_reference(c_run):
-    spec, run_dir, report = c_run
+    _spec, run_dir, report = c_run
     assert report["pipeline_status"] == "COMPLETED", report["stage_status"]
     ranked = report["base_ranking"]
     assert {r["topology_id"] for r in ranked} == {"toy_pcu", "toy_pcu_staggered"}
@@ -70,7 +70,7 @@ def test_two_topologies_rank_on_one_common_reference(c_run):
 
 
 def test_report_carries_every_milestone_c_section(c_run):
-    spec, run_dir, report = c_run
+    _spec, run_dir, report = c_run
     ph = report["physical"]
     assert ph["refinement"]["stop_reason"] == "CONVERGED_WITHIN_SCOPE"
     assert ph["supercell_transfer"]["toy_pcu@2x2x2"]["status"] == "COMPLETED"
@@ -195,7 +195,7 @@ def test_native_transfer_states_are_not_replicas(c_run):
 
 # -- T05.2 acquisition, T08 refinement ------------------------------------------------------------------------
 def test_refinement_acquires_only_unlabelled_orbits_with_reasons(c_run):
-    spec, run_dir, report = c_run
+    _spec, run_dir, report = c_run
     split = load_artifacts(run_dir, "ValidationSplit")[0]["per_topology"]
     batches = load_artifacts(run_dir, "AcquisitionBatch")
     assert batches and all(b["holdout_excluded"] for b in batches)
@@ -424,7 +424,7 @@ def test_structure_validation_reports_tools_and_catches_overlaps(c_run, monkeypa
         == "SKIPPED_TOOL_UNAVAILABLE"
     )
     relaxed = calc["relaxed_geometry"]
-    squashed = {**relaxed, "frac_coords": [relaxed["frac_coords"][0]] + relaxed["frac_coords"][:-1]}
+    squashed = {**relaxed, "frac_coords": [relaxed["frac_coords"][0], *relaxed["frac_coords"][:-1]]}
     bad = validation.validate_structure(spec, {**calc, "relaxed_geometry": squashed}, geometry)
     assert "min_interatomic_distance" in bad["failed_checks"] and bad["status"] == "FAILED"
 

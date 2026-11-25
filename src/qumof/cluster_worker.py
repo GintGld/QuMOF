@@ -51,7 +51,7 @@ def compute(job: dict) -> dict:
         return {"status": "FAILED", "error": {"code": "UNSUPPORTED_METHOD", "detail": method}}
     with lib.with_omp_threads(job.get("n_threads", 1)):
         mol = gto.M(
-            atom=[[e, tuple(r)] for e, r in zip(job["elements"], job["coords_A"])],
+            atom=[[e, tuple(r)] for e, r in zip(job["elements"], job["coords_A"], strict=False)],
             unit="Angstrom",
             basis=job["basis"],
             ecp=job.get("ecp") or {},
@@ -73,7 +73,7 @@ def compute(job: dict) -> dict:
 
             system = {
                 "system_id": job["cluster_hash"],
-                "atoms": [[e, *r] for e, r in zip(job["elements"], job["coords_A"])],
+                "atoms": [[e, *r] for e, r in zip(job["elements"], job["coords_A"], strict=False)],
                 "unit": "Angstrom",
                 "charge": job["charge"],
                 "spin": job["spin"],

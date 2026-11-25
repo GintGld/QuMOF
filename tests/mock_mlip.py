@@ -25,23 +25,24 @@ def mirror_pw(item):
     lat, el = item["lattice_A"], item["elements"]
     pos = [[sum(f[j] * lat[j][i] for j in range(3)) for i in range(3)] for f in item["frac_coords"]]
     energy = sum(pw.MU_RY[x] for x in el)
-    n_pos = [r for x, r in zip(el, pos) if x == "N"]
-    zn_pos = [r for x, r in zip(el, pos) if x == "Zn"]
+    n_pos = [r for x, r in zip(el, pos, strict=False) if x == "N"]
+    zn_pos = [r for x, r in zip(el, pos, strict=False) if x == "Zn"]
     images = [
         [a * lat[0][c] + b * lat[1][c] + d * lat[2][c] for c in range(3)]
         for a in (-1, 0, 1)
         for b in (-1, 0, 1)
         for d in (-1, 0, 1)
     ]
-    contacts = lambda u, v: sum(
-        math.dist(u, [v[c] + img[c] for c in range(3)]) < pw.NODE_RADIUS_A for img in images
-    )
+    def contacts(u, v):
+        return sum(
+            math.dist(u, [v[c] + img[c] for c in range(3)]) < pw.NODE_RADIUS_A for img in images
+        )
     nodes = [[contacts(n, r) for r in zn_pos] for n in n_pos]
     scale = 1 + pw.KAPPA / 80.0**2
     for p in range(len(n_pos)):
         for q in range(p, len(n_pos)):
             if p != q:
-                energy += pw.J_NODE_RY * sum(a * b for a, b in zip(nodes[p], nodes[q])) * scale
+                energy += pw.J_NODE_RY * sum(a * b for a, b in zip(nodes[p], nodes[q], strict=False)) * scale
             else:
                 energy += pw.J_NODE_RY * sum(a * (a - 1) // 2 for a in nodes[p]) * scale
             for img in images:

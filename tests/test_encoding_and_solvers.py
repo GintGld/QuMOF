@@ -90,7 +90,7 @@ def test_verifier_catches_tampered_encodings(pairwise, cubic, tamper):
     if tamper == "double_count_quadratic":
         q = dict(enc["quadratic_eV"][0])
         q["exact"] = str(2 * Fraction(q["exact"]))
-        enc["quadratic_eV"] = [q] + enc["quadratic_eV"][1:]
+        enc["quadratic_eV"] = [q, *enc["quadratic_eV"][1:]]
     elif tamper == "drop_constant":
         enc["constant_exact"] = "0"
     else:

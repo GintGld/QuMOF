@@ -159,7 +159,7 @@ def spec_from_recipe(recipe: dict) -> dict:
             "license": None,
         }
     ]
-    for i, l in enumerate(recipe["swappable_linkers"]):
+    for _i, l in enumerate(recipe["swappable_linkers"]):
         blocks.append(
             {
                 "id": l["id"],

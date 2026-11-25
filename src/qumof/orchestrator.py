@@ -7,7 +7,7 @@ inputs reuses committed stages and never resubmits evaluator jobs.
 from __future__ import annotations
 
 from fractions import Fraction
-from typing import Any, TypeAlias
+from typing import Any
 
 from . import (
     acquisition,
@@ -70,7 +70,7 @@ class StageOutcome:
         self.status, self.artifacts, self.detail, self.halt = status, artifacts or {}, detail, halt
 
 
-Backend: TypeAlias = dft.PeriodicDFTBackend | SyntheticFixtureBackend
+type Backend = dft.PeriodicDFTBackend | SyntheticFixtureBackend
 
 
 class Pipeline:
@@ -438,7 +438,7 @@ class Pipeline:
         split = self.ctx["split"]["per_topology"]
         residuals = [
             abs(Fraction(r["base_energy_exact"]) - Fraction(p["predicted_base_energy_exact"]))
-            for r, p in zip(results, pool_rows)
+            for r, p in zip(results, pool_rows, strict=False)
             if r["status"] == "SUCCEEDED"
         ]
         detail = {
@@ -1100,7 +1100,7 @@ class Pipeline:
                 topo, [list(r["bits"]) for r in pool], "evaluate_candidate_pool"
             )
             arts.update(records)
-            for row, r in zip(pool, evaluated):
+            for row, r in zip(pool, evaluated, strict=False):
                 # Failed DFT and transformed structures keep their own records; a build failure gets a stub.
                 calc = r["selected"] or make_record(
                     "CalculationResult",

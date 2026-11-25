@@ -3,6 +3,7 @@
 The DFT engine is tests/mock_pw.py speaking Quantum ESPRESSO formats; every number is SYNTHETIC.
 """
 
+import itertools
 import json
 import shutil
 from fractions import Fraction
@@ -35,7 +36,7 @@ def toy_backend(tmp_path):
 
 # -- T06.1 periodic DFT backend --------------------------------------------------
 def test_qe_input_records_every_scientific_setting(toy_backend):
-    spec, _, backend, geometry, _ = toy_backend
+    _spec, _, backend, geometry, _ = toy_backend
     text = backend.adapter.write_input(
         geometry,
         backend.protocol,
@@ -85,7 +86,7 @@ def test_relaxation_and_single_point_give_normalized_energy(toy_backend):
 
 
 def test_scf_retry_changes_only_declared_numerics(toy_backend, monkeypatch):
-    spec, store, backend, geometry, decoration = toy_backend
+    _spec, _store, backend, geometry, decoration = toy_backend
     monkeypatch.setenv("MOCK_PW_MODE", "scf_fail_high_beta")
     result = dft.evaluate_geometry(backend, geometry, decoration, "retry")["selected"]
     assert result["status"] == "SUCCEEDED"
@@ -105,7 +106,7 @@ def test_scf_retry_changes_only_declared_numerics(toy_backend, monkeypatch):
     ],
 )
 def test_unusable_calculations_never_become_energies(toy_backend, monkeypatch, mode, status, code):
-    spec, store, backend, geometry, decoration = toy_backend
+    spec, _store, backend, geometry, decoration = toy_backend
     monkeypatch.setenv("MOCK_PW_MODE", mode)
     evaluation = dft.evaluate_geometry(backend, geometry, decoration, mode)
     result = evaluation["selected"]
@@ -126,7 +127,7 @@ def test_unusable_calculations_never_become_energies(toy_backend, monkeypatch, m
 
 
 def test_equivalent_representations_give_matching_normalized_energies(toy_backend):
-    spec, store, backend, geometry, decoration = toy_backend
+    spec, _store, backend, geometry, decoration = toy_backend
     reference = dft.evaluate_geometry(backend, geometry, decoration, "ref")["selected"]
     # Same structure, atoms listed in reverse order: a distinct input, identical normalized energy.
     reordered = {
@@ -164,7 +165,7 @@ def test_equivalent_representations_give_matching_normalized_energies(toy_backen
 
 
 def test_replicated_cell_gives_the_same_energy_per_formula_unit(toy_backend):
-    spec, store, backend, geometry, decoration = toy_backend
+    spec, store, backend, geometry, _decoration = toy_backend
     lattice = geometry["lattice_A"]
     doubled = {
         **geometry,
@@ -298,7 +299,7 @@ def test_ranking_ties_use_the_declared_tolerance(toy_run):
     spec, _, report = toy_run
     ranked = report["base_ranking"]
     tol = spec.physical["tolerances"]["target_relative_energy_tolerance"]
-    for prev, row in zip(ranked, ranked[1:]):
+    for prev, row in itertools.pairwise(ranked):
         assert row["tied_with_previous"] == (
             row["ranking_energy_eV"] - prev["ranking_energy_eV"] <= tol + 1e-12
         )
@@ -363,7 +364,7 @@ def test_build_failure_in_pool_makes_ranking_incomplete(toy_run, tmp_path, monke
 
 # -- T03.2 grouped validation and frozen holdout ------------------------------------
 def test_grouped_cv_selects_fewest_parameters_with_documented_gauge(toy_run):
-    spec, run_dir, report = toy_run
+    _spec, run_dir, report = toy_run
     sel = load_artifacts(run_dir, "ModelSelectionReport")[0]
     assert sel["status"] == "COMPLETED" and sel["selected_model"] == "M0_nearest_pairs"
     chosen = {c["model_id"]: c for c in sel["candidates"]}
@@ -383,7 +384,7 @@ def test_grouped_cv_selects_fewest_parameters_with_documented_gauge(toy_run):
 
 
 def test_no_symmetry_orbit_crosses_the_holdout_boundary(toy_run):
-    spec, run_dir, _ = toy_run
+    _spec, run_dir, _ = toy_run
     split = load_artifacts(run_dir, "ValidationSplit")[0]["per_topology"]["toy_pcu"]
     snaps = {s["role"]: s for s in load_artifacts(run_dir, "DatasetSnapshot")}
     train = {e["orbit_id"] for e in snaps["training"]["entries"]}

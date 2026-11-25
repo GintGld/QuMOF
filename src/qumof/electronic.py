@@ -128,7 +128,7 @@ class SyntheticFixtureBackend:
         mode = self.spec.correction_mode
         corrected_fidelity = f"SYNTHETIC_CORRECTED_{self.spec.case.upper()}_{mode.upper()}"
         results = []
-        for line, (req, resp) in enumerate(zip(requests, responses)):
+        for line, (req, resp) in enumerate(zip(requests, responses, strict=False)):
             topo = self.spec.topologies[req["topology_id"]]
             if resp.get("topology_id") != req["topology_id"] or resp.get("bits") != req["bits"]:
                 raise PipelineError("RESPONSE_IDENTITY_MISMATCH", f"line {line}")

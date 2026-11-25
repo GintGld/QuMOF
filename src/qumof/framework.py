@@ -129,7 +129,7 @@ def _norm(v) -> float:
 
 
 def _sub(a, b) -> tuple:
-    return tuple(x - y for x, y in zip(a, b))
+    return tuple(x - y for x, y in zip(a, b, strict=False))
 
 
 def _cart_to_frac(lattice, r) -> tuple:
@@ -365,9 +365,7 @@ def deconstruct(structure: dict, bond_tolerance: float) -> dict:
 
 # -- slot lattice -------------------------------------------------------------
 def _slot_key(linker) -> tuple:
-    return tuple(round(c, 3) % 1.0 for c in linker["centroid_frac"]) + (
-        tuple(linker["formula"].items()),
-    )
+    return (*tuple(round(c, 3) % 1.0 for c in linker["centroid_frac"]), tuple(linker["formula"].items()))
 
 
 def _frac_close(f, g, tol=SLOT_MATCH_TOL) -> bool:
@@ -482,17 +480,17 @@ def build_slot_lattice(
             )
     node_species = [species_for_formula(n["formula"], blocks, "node") for n in parts["nodes"]]
     linker_species = [species_for_formula(l["formula"], blocks, "linker") for l in parts["linkers"]]
-    for formula, sp in zip([n["formula"] for n in parts["nodes"]], node_species):
+    for formula, sp in zip([n["formula"] for n in parts["nodes"]], node_species, strict=False):
         if sp is None:
             fail("UNKNOWN_NODE", str(formula))
-    for formula, sp in zip([l["formula"] for l in parts["linkers"]], linker_species):
+    for formula, sp in zip([l["formula"] for l in parts["linkers"]], linker_species, strict=False):
         if sp is None:
             fail("UNKNOWN_LINKER", str(formula))
     if errors:
         return {"errors": errors}
 
     # Connector count/geometry: declared connector atoms and points of extension per block.
-    for l, sp in zip(parts["linkers"], linker_species):
+    for l, sp in zip(parts["linkers"], linker_species, strict=False):
         block = blocks[sp]
         if len(l["connector_atoms"]) != block["n_connector_atoms"]:
             fail(
@@ -504,7 +502,7 @@ def build_slot_lattice(
                 "INVALID_CONNECTIVITY",
                 f"{sp}: binds {len(l['node_incidences'])} nodes, declared {block['connectivity']}",
             )
-    for n, sp in zip(parts["nodes"], node_species):
+    for n, sp in zip(parts["nodes"], node_species, strict=False):
         if len(n["incidences"]) != blocks[sp]["connectivity"]:
             fail(
                 "INVALID_CONNECTIVITY",
@@ -636,7 +634,7 @@ def species_delta(blocks: dict, species: str) -> dict:
 # -- builder ------------------------------------------------------------------
 def geometry_hashes(lattice, elements, fracs) -> tuple[str, str]:
     """(ordered hash in builder order, order-independent canonical hash)."""
-    rows = [(e, tuple(round(_wrap(x), 5) % 1.0 for x in f)) for e, f in zip(elements, fracs)]
+    rows = [(e, tuple(round(_wrap(x), 5) % 1.0 for x in f)) for e, f in zip(elements, fracs, strict=False)]
     lat = [[round(x, 5) for x in v] for v in lattice]
     return content_hash({"lattice": lat, "atoms": rows}), content_hash(
         {"lattice": lat, "atoms": sorted(rows)}
@@ -697,8 +695,8 @@ class ParentSubstitutionBuilder:
                 "DEGENERATE_SUBSTITUTION_FRAME", f"slot {slot['slot_id']} has < 2 connector atoms"
             )
         axis = _sub(ends[-1], ends[0])
-        proj = sum(a * b for a, b in zip(axis, u))
-        v = tuple(a - proj * b for a, b in zip(axis, u))
+        proj = sum(a * b for a, b in zip(axis, u, strict=False))
+        v = tuple(a - proj * b for a, b in zip(axis, u, strict=False))
         if _norm(v) < 1e-6:
             raise BuildFailure("DEGENERATE_SUBSTITUTION_FRAME", f"slot {slot['slot_id']}")
         v = tuple(x / _norm(v) for x in v)
@@ -728,7 +726,7 @@ class ParentSubstitutionBuilder:
             for i in slot["atoms"]:
                 atoms[i].update(slot=slot["slot_id"], block=slot["parent_species"])
         removed, added = set(), []
-        for slot, species in zip(info["slots"], species_by_slot):
+        for slot, species in zip(info["slots"], species_by_slot, strict=False):
             if species == slot["parent_species"]:
                 continue
             h, new = self._substitute(struct, slot, species)
@@ -748,7 +746,7 @@ class ParentSubstitutionBuilder:
                 "ATOM_OVERLAP", f"{dmin:.3f} A < {self.protocol['min_interatomic_distance_A']} A"
             )
         expected = Counter(self.lattice_info["structure_inventory"])
-        for slot, species in zip(self.lattice_info["slots"], species_by_slot):
+        for slot, species in zip(self.lattice_info["slots"], species_by_slot, strict=False):
             if species != slot["parent_species"]:
                 for el, d in species_delta(self.blocks, species).items():
                     expected[el] += d

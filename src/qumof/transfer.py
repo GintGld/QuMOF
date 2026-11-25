@@ -28,16 +28,13 @@ KEY_SCALE = 1000
 
 def _key(slot_type, slot: dict, diag, period) -> tuple:
     """Slot position in parent fractional coordinates (integer 1e-3 units) modulo the working-cell period."""
-    return (slot_type,) + tuple(
-        int(round(slot["centroid_frac"][k] * diag[k] * KEY_SCALE)) % (period[k] * KEY_SCALE)
-        for k in range(3)
-    )
+    return (slot_type, *tuple(round(slot["centroid_frac"][k] * diag[k] * KEY_SCALE) % (period[k] * KEY_SCALE) for k in range(3)))
 
 
 def slot_map(working: dict, transfer: dict) -> list | None:
     """For every transfer-cell slot, the working-cell slot it replicates (None when the cell is no replica)."""
     w_diag, t_diag = working["supercell_diagonal"], transfer["supercell_diagonal"]
-    if any(t % w for t, w in zip(t_diag, w_diag)):
+    if any(t % w for t, w in zip(t_diag, w_diag, strict=False)):
         return None
     index = {_key(s["slot_type"], s, w_diag, w_diag): s["slot_id"] for s in working["slots"]}
     out = []
@@ -55,7 +52,7 @@ def replicate(bits, mapping: list) -> list:
 
 def is_replica(t_bits, mapping: list) -> bool:
     seen = {}
-    return all(seen.setdefault(j, b) == b for b, j in zip(t_bits, mapping))
+    return all(seen.setdefault(j, b) == b for b, j in zip(t_bits, mapping, strict=False))
 
 
 def replication_report(

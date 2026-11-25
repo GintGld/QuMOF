@@ -305,7 +305,7 @@ def gather_evidence(spec, controls, valency=None, local=None) -> dict:
         results = valency.run(calls)
         n_requests += len(calls)
         fallback = []
-        for ref, res in zip(resolvable, results[: len(resolvable)]):
+        for ref, res in zip(resolvable, results[: len(resolvable)], strict=False):
             if isinstance(res, Exception):
                 gaps.append(
                     {
@@ -341,7 +341,7 @@ def gather_evidence(spec, controls, valency=None, local=None) -> dict:
                 ]
             )
             n_requests += len(fallback)
-            for ref, res in zip(fallback, again):
+            for ref, res in zip(fallback, again, strict=False):
                 hit = None if isinstance(res, Exception) else _accept(ref, res.get("papers") or [])
                 if hit:
                     sources.append(
@@ -354,7 +354,7 @@ def gather_evidence(spec, controls, valency=None, local=None) -> dict:
                             "detail": f"{ref.get('alias')}: not found in Valency by DOI or title ({ref.get('doi')})",
                         }
                     )
-        for q, res in zip(queries, results[len(resolvable) :]):
+        for q, res in zip(queries, results[len(resolvable) :], strict=False):
             if isinstance(res, Exception):
                 gaps.append(
                     {"code": "RETRIEVAL_ERROR", "detail": f"query '{q}': {type(res).__name__}"}

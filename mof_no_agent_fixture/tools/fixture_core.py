@@ -65,7 +65,7 @@ def canonical(topology, bits):
 
 def solve_linear_system(matrix, rhs):
     n = len(rhs)
-    augmented = [[Fraction(x) for x in row] + [Fraction(b)] for row, b in zip(matrix, rhs)]
+    augmented = [[Fraction(x) for x in row] + [Fraction(b)] for row, b in zip(matrix, rhs, strict=False)]
     for col in range(n):
         pivot = next((r for r in range(col, n) if augmented[r][col]), None)
         if pivot is None:
@@ -76,7 +76,7 @@ def solve_linear_system(matrix, rhs):
         for r in range(n):
             if r != col:
                 scale = augmented[r][col]
-                augmented[r] = [a - scale * b for a, b in zip(augmented[r], augmented[col])]
+                augmented[r] = [a - scale * b for a, b in zip(augmented[r], augmented[col], strict=False)]
     return [row[-1] for row in augmented]
 
 
@@ -85,14 +85,14 @@ def fit_linear(x_rows, y_values):
     n = len(x_rows[0])
     gram = [[sum(Fraction(x[i]) * x[j] for x in x_rows) for j in range(n)] for i in range(n)]
     rhs = [
-        sum(Fraction(x[i]) * Fraction(str(y)) for x, y in zip(x_rows, y_values)) for i in range(n)
+        sum(Fraction(x[i]) * Fraction(str(y)) for x, y in zip(x_rows, y_values, strict=False)) for i in range(n)
     ]
     return solve_linear_system(gram, rhs)
 
 
 def predict(topology, bits, feature_indices, coefficients):
     f = features(topology, bits)
-    return sum(c * f[i] for i, c in zip(feature_indices, coefficients))
+    return sum(c * f[i] for i, c in zip(feature_indices, coefficients, strict=False))
 
 
 def rmse(values):
@@ -133,7 +133,7 @@ def compile_pair_qubo(topology, coefficients, ratio_penalty=1):
 def evaluate_qubo(qubo, bits):
     return (
         qubo["constant_eV"]
-        + sum(c * x for c, x in zip(qubo["linear_eV"], bits))
+        + sum(c * x for c, x in zip(qubo["linear_eV"], bits, strict=False))
         + sum(term["value"] * bits[term["i"]] * bits[term["j"]] for term in qubo["quadratic_eV"])
     )
 

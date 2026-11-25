@@ -105,7 +105,7 @@ def check_run(spec, report: dict) -> dict:
         check(
             f"{tid}:pool_matches_reference",
             [p[0] for p in pool] == [p[0] for p in ref_pool]
-            and all(_close(a[1], b[1]) for a, b in zip(pool, ref_pool)),
+            and all(_close(a[1], b[1]) for a, b in zip(pool, ref_pool, strict=False)),
             f"{len(pool)} vs {len(ref_pool)}",
         )
         enc = sec.get("encoding", {})
@@ -131,13 +131,13 @@ def check_run(spec, report: dict) -> dict:
                 same = (
                     _close(art["constant_eV"], ref["qubo"]["constant_eV"])
                     and all(
-                        _close(a, b) for a, b in zip(art["linear_eV"], ref["qubo"]["linear_eV"])
+                        _close(a, b) for a, b in zip(art["linear_eV"], ref["qubo"]["linear_eV"], strict=False)
                     )
                     and [(q["i"], q["j"]) for q in art["quadratic_eV"]]
                     == [(q["i"], q["j"]) for q in ref["qubo"]["quadratic_eV"]]
                     and all(
                         _close(a["value"], b["value"])
-                        for a, b in zip(art["quadratic_eV"], ref["qubo"]["quadratic_eV"])
+                        for a, b in zip(art["quadratic_eV"], ref["qubo"]["quadratic_eV"], strict=False)
                     )
                 )
                 check(f"{tid}:qubo_coefficients_match_reference", same)
@@ -158,7 +158,7 @@ def check_run(spec, report: dict) -> dict:
     check(
         "ranked_pool_matches_reference",
         [r[0] for r in ranked] == [r[0] for r in ref_ranked]
-        and all(_close(a[1], b[1]) for a, b in zip(ranked, ref_ranked)),
+        and all(_close(a[1], b[1]) for a, b in zip(ranked, ref_ranked, strict=False)),
     )
     changed = (report["stage_detail"].get("ranking") or {}).get("ranking_changed_by_correction")
     if spec.correction_mode in ("none", "constant"):

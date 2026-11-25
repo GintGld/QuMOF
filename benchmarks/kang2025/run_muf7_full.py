@@ -50,7 +50,7 @@ class Builder:
         t = self.topo
         cn = {
             int(i): int(t.unique_cn[list(t.unique_node_types).index(nt)])
-            for i, nt in zip(t.node_indices, t.node_types)
+            for i, nt in zip(t.node_indices, t.node_types, strict=False)
         }
         assert sorted(
             e
@@ -106,8 +106,9 @@ def zn4o_cluster(atoms) -> dict:
     nl = NeighborList(natural_cutoffs(atoms, mult=1.15), self_interaction=False, bothways=True)  # pyright: ignore[reportArgumentType]  # ase annotates mult as int; it is a float scale factor
     nl.update(atoms)
     sym = atoms.get_chemical_symbols()
-    zn = [i for i, s in enumerate(sym) if s == "Zn"]
-    nb = lambda i: nl.get_neighbors(i)
+    [i for i, s in enumerate(sym) if s == "Zn"]
+    def nb(i):
+        return nl.get_neighbors(i)
     mu4 = next(
         i for i, s in enumerate(sym) if s == "O" and sum(sym[j] == "Zn" for j in nb(i)[0]) == 4
     )
@@ -128,20 +129,20 @@ def zn4o_cluster(atoms) -> dict:
     add(mu4, ref)
     o_carb, c_carb = {}, {}
     for z in zns:
-        zi, zoff = nb(mu4)[0].tolist().index(z), nb(mu4)[1][nb(mu4)[0].tolist().index(z)]
+        _zi, zoff = nb(mu4)[0].tolist().index(z), nb(mu4)[1][nb(mu4)[0].tolist().index(z)]
         zp = pos(z, zoff)
         add(z, zp)
-        for o, ooff in zip(*nb(z)):
+        for o, ooff in zip(*nb(z), strict=False):
             if sym[o] == "O" and o != mu4:
                 op = pos(o, ooff + zoff)
                 add(o, op)
                 o_carb[o] = op
-                for c, coff in zip(*nb(o)):
+                for c, coff in zip(*nb(o), strict=False):
                     if sym[c] == "C":
                         c_carb[c] = pos(c, coff + ooff + zoff)
     for c, cp in c_carb.items():
         add(c, cp)
-        for r, roff in zip(*nb(c)):
+        for r, roff in zip(*nb(c), strict=False):
             if sym[r] == "C":  # ring carbon -> capping H along the C-C bond
                 rp = cp + (atoms.positions[r] + roff @ atoms.cell.array - atoms.positions[c])
                 v = rp - cp
@@ -367,7 +368,7 @@ def main(argv=None) -> int:
         "cluster_vqe_sqd": vqe,
         "runs": scored,
         "approximations": [
-            "orb-v3 + D3(BJ) energies instead of DFT (fmax %.2f eV/A)" % args.fmax,
+            f"orb-v3 + D3(BJ) energies instead of DFT (fmax {args.fmax:.2f} eV/A)",
             "PORMAKE translation-only cell (ith-d, 540 atoms), no symmetry reduction",
             "Kang sites mapped to the three parallel-linker pairs; second-neighbour assignment assumed",
             "cluster VQE/SQD: Zn4O(HCO2)6, STO-3G, CAS(4,4); a local electronic check",
@@ -385,10 +386,11 @@ def main(argv=None) -> int:
         "top-1 = orb-lowest of top-k | mean Spearman QUBO vs orb | cost $ |",
         "|---|---|---|---|---|---|---|---|---|",
     ]
-    for model in ["kang_control"] + models:
+    for model in ["kang_control", *models]:
         rs = [x for x in scored if x["model"] == model]
         ok = [x for x in rs if "top1" in x]
-        f = lambda k: f"{sum(bool(x[k]) for x in ok)}/{len(rs)}"
+        def f(k):
+            return f"{sum(bool(x[k]) for x in ok)}/{len(rs)}"
         sp = [
             x["spearman_qubo_vs_orb_top_k"]
             for x in ok

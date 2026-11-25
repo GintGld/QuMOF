@@ -13,7 +13,6 @@ import math
 import re
 import shlex
 from fractions import Fraction
-from typing import TypeAlias
 
 from .contract import PipelineError
 
@@ -38,7 +37,7 @@ def _leading(pattern: str, text: str, what: str) -> str:
 
 
 # Tokenized string
-Token: TypeAlias = list[str]
+type Token = list[str]
 
 
 def _tokens(line: str) -> list[str]:
@@ -49,7 +48,7 @@ def _tokens(line: str) -> list[str]:
 
 
 # Any element of the list is (column names, rows of tokens)
-Loop: TypeAlias = tuple[list[str], list[Token]]
+type Loop = tuple[list[str], list[Token]]
 
 
 def _parse_items(text: str) -> tuple[dict, list[Loop]]:
@@ -230,11 +229,10 @@ def parse_cif(text: str, source: str) -> dict:
                 if (
                     _frac_distance(f, other["frac"]) <= POSITION_DEDUP_TOL
                     and other["label"] != site["label"]
-                ):
-                    if other["occupancy"] >= 1 and site["occupancy"] >= 1:
-                        raise PipelineError(
-                            "CIF_OVERLAPPING_SITES", f"{site['label']} / {other['label']}"
-                        )
+                ) and other["occupancy"] >= 1 and site["occupancy"] >= 1:
+                    raise PipelineError(
+                        "CIF_OVERLAPPING_SITES", f"{site['label']} / {other['label']}"
+                    )
             atoms.append({**site, "frac": f})
 
     partial = sorted({a["label"] for a in atoms if a["occupancy"] < 1.0 - 1e-6})
@@ -263,7 +261,7 @@ def write_cif(
     def angle(u, v):
         return math.degrees(
             math.acos(
-                sum(x * y for x, y in zip(u, v))
+                sum(x * y for x, y in zip(u, v, strict=False))
                 / (math.sqrt(sum(x * x for x in u)) * math.sqrt(sum(x * x for x in v)))
             )
         )
@@ -296,6 +294,6 @@ def write_cif(
     ]
     out += [
         f"{l} {e} {f[0]:.6f} {f[1]:.6f} {f[2]:.6f} 1.0"
-        for l, e, f in zip(labels, elements, frac_coords)
+        for l, e, f in zip(labels, elements, frac_coords, strict=False)
     ]
     return "\n".join(out) + "\n"

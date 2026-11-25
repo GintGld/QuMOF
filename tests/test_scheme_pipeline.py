@@ -141,7 +141,7 @@ def test_every_scheme_box_runs_and_leaves_evidence(scheme_run):
 
 
 def test_scripted_run_uses_one_request_per_role_call_and_records_it(scheme_run):
-    run_dir, summary, trace = scheme_run
+    run_dir, summary, _trace = scheme_run
     ledger = json.loads((run_dir / "agent/ledger.json").read_text())
     roles = [e["role"] for e in ledger["entries"]]
     assert roles[:4] == ["A1", "A2", "A67", "A4"]  # in diagram order

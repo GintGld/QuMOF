@@ -38,7 +38,7 @@ def _structure(geometry: dict) -> dict:
         "lattice": geometry["lattice_A"],
         "atoms": [
             {"element": e, "frac": tuple(f)}
-            for e, f in zip(geometry["elements"], geometry["frac_coords"])
+            for e, f in zip(geometry["elements"], geometry["frac_coords"], strict=False)
         ],
     }
 
@@ -49,7 +49,7 @@ def _lengths_angles(lattice) -> tuple:
     def angle(u, v):
         return math.degrees(
             math.acos(
-                sum(a * b for a, b in zip(u, v))
+                sum(a * b for a, b in zip(u, v, strict=False))
                 / (math.sqrt(sum(a * a for a in u)) * math.sqrt(sum(b * b for b in v)))
             )
         )
@@ -65,7 +65,7 @@ def metal_coordination(geometry: dict, tolerance: float) -> dict:
     structure = _structure(geometry)
     adjacency = bond_graph(structure, tolerance)
     numbers = Counter()
-    for atom, neighbours in zip(structure["atoms"], adjacency):
+    for atom, neighbours in zip(structure["atoms"], adjacency, strict=False):
         if atom["element"] in METALS:
             numbers[(atom["element"], len(neighbours))] += 1
     return {f"{el}:{cn}": n for (el, cn), n in sorted(numbers.items())}
@@ -208,8 +208,8 @@ def validate_structure(spec, calculation: dict, built_geometry: dict) -> dict:
     checks["cell_distortion"] = {
         "status": StageStatus.COMPLETED.value,
         "tool": "qumof.validation",
-        "length_change_percent": [round(100 * (b - a) / a, 3) for a, b in zip(l0, l1)],
-        "angle_change_deg": [round(b - a, 3) for a, b in zip(a0, a1)],
+        "length_change_percent": [round(100 * (b - a) / a, 3) for a, b in zip(l0, l1, strict=False)],
+        "angle_change_deg": [round(b - a, 3) for a, b in zip(a0, a1, strict=False)],
     }
     cif = write_cif(
         calculation["configuration_id"].replace(":", "_"),

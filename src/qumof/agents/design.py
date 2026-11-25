@@ -210,7 +210,7 @@ def qaoa_probabilities(packet: dict, poly: dict, reference: set, config: dict) -
         for _ in range(config["restarts"]):
             x0 = [rng.uniform(0, math.pi / 2) for _ in range(2 * config["layers"])]
             params, value, _ = nelder_mead(
-                lambda p: sum(abs(a) ** 2 * c for a, c in zip(evolve(p, cost, pairs), cost)),
+                lambda p: sum(abs(a) ** 2 * c for a, c in zip(evolve(p, cost, pairs), cost, strict=False)),
                 x0,
                 0.3,
                 config["max_evaluations"],
@@ -323,9 +323,9 @@ def spectrum_agreement(material: dict, packet: dict, poly: dict) -> dict:
     n = len(keys)
     mq, mk = sum(q) / n, sum(k) / n
     var = sum((x - mq) ** 2 for x in q)
-    scale = max(sum((x - mq) * (y - mk) for x, y in zip(q, k)) / var, 0.0) if var > TOL else 0.0
+    scale = max(sum((x - mq) * (y - mk) for x, y in zip(q, k, strict=False)) / var, 0.0) if var > TOL else 0.0
     offset = mk - scale * mq
-    mae = sum(abs(scale * x + offset - y) for x, y in zip(q, k)) / n
+    mae = sum(abs(scale * x + offset - y) for x, y in zip(q, k, strict=False)) / n
     rq, rk = _ranks(q), _ranks(k)
     mrq, mrk = sum(rq) / n, sum(rk) / n
     den = math.sqrt(sum((a - mrq) ** 2 for a in rq) * sum((b - mrk) ** 2 for b in rk))
@@ -333,7 +333,7 @@ def spectrum_agreement(material: dict, packet: dict, poly: dict) -> dict:
     return {
         "mae": mae,
         "nmae": mae / spread if spread else None,
-        "spearman": (sum((a - mrq) * (b - mrk) for a, b in zip(rq, rk)) / den) if den else None,
+        "spearman": (sum((a - mrq) * (b - mrk) for a, b in zip(rq, rk, strict=False)) / den) if den else None,
         "scale": scale,
         "offset": offset,
         "n_states": n,

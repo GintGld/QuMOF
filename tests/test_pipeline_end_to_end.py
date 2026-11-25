@@ -24,7 +24,7 @@ def test_constant_correction_preserves_full_order(runs, case):
     assert [r["orbit_id"] for r in none] == [r["orbit_id"] for r in const]
     assert all(
         c["corrected_energy_eV"] - n["corrected_energy_eV"] == pytest.approx(0.05, abs=1e-12)
-        for n, c in zip(none, const)
+        for n, c in zip(none, const, strict=False)
     )
 
 
@@ -40,7 +40,7 @@ def test_topology_dependent_correction_flips_winner(runs, case):
 @pytest.mark.parametrize("case", CASES)
 @pytest.mark.parametrize("mode", MODES)
 def test_bookkeeping_and_provenance(runs, case, mode):
-    spec, run_dir, report = runs[(case, mode)]
+    _spec, run_dir, report = runs[(case, mode)]
     artifacts = [json.loads(p.read_text()) for p in (run_dir / "artifacts").glob("*.json")]
     assert artifacts and all(a["provenance"] == "SYNTHETIC" for a in artifacts)
     train = [

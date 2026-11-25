@@ -484,7 +484,7 @@ class AgentRun:
                 "optimisation": optimisation,
                 "model_grid": v["model_grid"],
                 "round": round_index + 1,
-                "grid_history": history + [v["model_grid"]],
+                "grid_history": [*history, v["model_grid"]],
             }
         entry.update(
             executed=False,

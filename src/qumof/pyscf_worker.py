@@ -206,7 +206,7 @@ def build_cell(lattice_A, elements, cart_A, settings: dict, log):
     cell = gto.Cell()
     cell.unit = "A"
     cell.a = [list(map(float, v)) for v in lattice_A]
-    cell.atom = [[el, [float(x) for x in r]] for el, r in zip(elements, cart_A)]
+    cell.atom = [[el, [float(x) for x in r]] for el, r in zip(elements, cart_A, strict=False)]
     cell.basis = settings["basis"]
     cell.pseudo = settings["pseudo"]
     cell.ke_cutoff = float(settings["ke_cutoff_Ha"])

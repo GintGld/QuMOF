@@ -55,7 +55,7 @@ def test_quadratized_cubic_model_reproduces_feasible_cost():
         other = next(v for v in range(topo.n_sites) if v not in (i, j))
         broken = {
             **enc,
-            "ancillas": [{**enc["ancillas"][0], "product_of": [i, other]}] + enc["ancillas"][1:],
+            "ancillas": [{**enc["ancillas"][0], "product_of": [i, other]}, *enc["ancillas"][1:]],
         }
         with pytest.raises(PipelineError, match="ENCODING_DECODE_MISMATCH"):
             optimization.exact_enumeration(spec, topo, hams[tid], broken)
@@ -277,7 +277,7 @@ def test_electronic_solvers_agree_on_identical_tiny_hamiltonian():
         prepare_active_space(system, protocol)["artifact_id"] == art["artifact_id"]
     )  # identical inputs, identical integrals
     h1, h2, ecore = read_fcidump(art["fcidump"])
-    stored_h1, stored_h2, stored_ecore, nelec, _ = problem_from_artifact(art)
+    stored_h1, stored_h2, stored_ecore, _nelec, _ = problem_from_artifact(art)
     assert (
         abs(h1 - stored_h1).max() < 1e-12
         and abs(h2 - stored_h2).max() < 1e-12

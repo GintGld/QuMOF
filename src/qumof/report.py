@@ -381,7 +381,7 @@ def build_report(spec, store, ctx, detail, status) -> dict:
         correction_mode=spec.correction_mode,
         pipeline_status=final,
         project_fingerprint=spec.fingerprint,
-        stage_order=list(status) + ["report"],
+        stage_order=[*list(status), "report"],
         runtime_agents_enabled=spec.agent_plan is not None,
         llm_calls=store.state["counters"].get("llm_calls", 0)
         + (spec.agent_plan or {}).get("llm_requests_before_pipeline", 0),

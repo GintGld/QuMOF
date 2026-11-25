@@ -24,7 +24,7 @@ CLUSTER_PREFIXES = {
     "point_orbit_": 1,
     "pair_orbit_": 2,
 }  # clusters.py: parent-lattice orbits, per formula unit
-TRANSFERABLE = ("constant",) + tuple(CLUSTER_PREFIXES)
+TRANSFERABLE = ("constant", *tuple(CLUSTER_PREFIXES))
 
 
 @cache
@@ -117,7 +117,7 @@ def feature_value(name: str, topo, bits):
         return sum(bits[i] for i in _orbit_sites(name, topo))
     if name == "unlike_distance_1":
         weights = topo.pair_weights_d1 or (1,) * len(topo.pairs_d1)
-        return sum(w * (bits[i] != bits[j]) for (i, j), w in zip(topo.pairs_d1, weights))
+        return sum(w * (bits[i] != bits[j]) for (i, j), w in zip(topo.pairs_d1, weights, strict=False))
     if name == "unlike_distance_2":
         return sum(bits[i] != bits[j] for i, j in topo.pairs_d2)
     if name == "BBB_paths":
@@ -144,7 +144,7 @@ def feature_polynomial(name: str, topo) -> dict:
         # [x_i != x_j] = x_i + x_j - 2 x_i x_j, times the periodic contact multiplicity (distance 1)
         pairs = topo.pairs_d1 if name == "unlike_distance_1" else topo.pairs_d2
         weights = (topo.pair_weights_d1 if name == "unlike_distance_1" else ()) or (1,) * len(pairs)
-        for (i, j), w in zip(pairs, weights):
+        for (i, j), w in zip(pairs, weights, strict=False):
             add((i,), w)
             add((j,), w)
             add(tuple(sorted((i, j))), -2 * w)
@@ -177,7 +177,7 @@ def check_feature_symmetry(topo, names, states) -> dict:
 
 def solve_exact(matrix, rhs) -> list:
     n = len(rhs)
-    aug = [[Fraction(x) for x in row] + [Fraction(b)] for row, b in zip(matrix, rhs)]
+    aug = [[Fraction(x) for x in row] + [Fraction(b)] for row, b in zip(matrix, rhs, strict=False)]
     for col in range(n):
         pivot = next((r for r in range(col, n) if aug[r][col] != 0), None)
         if pivot is None:
@@ -188,7 +188,7 @@ def solve_exact(matrix, rhs) -> list:
         for r in range(n):
             if r != col and aug[r][col] != 0:
                 factor = aug[r][col]
-                aug[r] = [a - factor * b for a, b in zip(aug[r], aug[col])]
+                aug[r] = [a - factor * b for a, b in zip(aug[r], aug[col], strict=False)]
     return [row[-1] for row in aug]
 
 
@@ -200,7 +200,7 @@ def least_squares_exact(x_rows, y) -> list:
         )
     p = len(x_rows[0])
     gram = [[sum(Fraction(r[i] * r[j]) for r in x_rows) for j in range(p)] for i in range(p)]
-    rhs = [sum(r[i] * v for r, v in zip(x_rows, y)) for i in range(p)]
+    rhs = [sum(r[i] * v for r, v in zip(x_rows, y, strict=False)) for i in range(p)]
     return solve_exact(gram, rhs)
 
 
@@ -214,7 +214,7 @@ def rmse(residuals) -> float:
 
 def predict_exact(names, coefficients, topo, bits) -> Fraction:
     return sum(
-        (c * v for c, v in zip(coefficients, feature_vector(topo, bits, names))), Fraction(0)
+        (c * v for c, v in zip(coefficients, feature_vector(topo, bits, names), strict=False)), Fraction(0)
     )
 
 
@@ -367,7 +367,7 @@ def independent_columns(x_rows, names) -> tuple[list, list]:
         for pivot, b in basis:
             if vec[pivot]:
                 factor = vec[pivot] / b[pivot]
-                vec = [v - factor * w for v, w in zip(vec, b)]
+                vec = [v - factor * w for v, w in zip(vec, b, strict=False)]
         pivot = next((i for i, v in enumerate(vec) if v), None)
         if pivot is None:
             dropped.append(name)
@@ -390,7 +390,7 @@ def ridge_exact(x_rows, y, alpha: Fraction, constant_index: int | None) -> list:
         ]
         for i in range(p)
     ]
-    rhs = [sum(r[i] * v for r, v in zip(x_rows, y)) for i in range(p)]
+    rhs = [sum(r[i] * v for r, v in zip(x_rows, y, strict=False)) for i in range(p)]
     return solve_exact(gram, rhs)
 
 
@@ -426,7 +426,7 @@ def spearman(a, b) -> float:
 
     ra, rb = ranks(a), ranks(b)
     ma, mb = sum(ra) / len(ra), sum(rb) / len(rb)
-    cov = sum((x - ma) * (y - mb) for x, y in zip(ra, rb))
+    cov = sum((x - ma) * (y - mb) for x, y in zip(ra, rb, strict=False))
     var = math.sqrt(sum((x - ma) ** 2 for x in ra) * sum((y - mb) ** 2 for y in rb))
     return cov / var if var else float("nan")
 
@@ -499,7 +499,7 @@ def fit_and_select_grouped(spec, topo, train: dict, groups: dict) -> dict:
                 fold_coefs.append([str(c) for c in coef])
                 for i, g in enumerate(entry_groups):
                     if folds[g] == fold:
-                        oof[i] = sum((c * v for c, v in zip(coef, x[i])), Fraction(0))
+                        oof[i] = sum((c * v for c, v in zip(coef, x[i], strict=False)), Fraction(0))
             coef = ridge_exact(x, y, alpha, const)
         except PipelineError as exc:
             results.append(
@@ -511,8 +511,8 @@ def fit_and_select_grouped(spec, topo, train: dict, groups: dict) -> dict:
                 }
             )
             continue
-        residuals = [p - t for p, t in zip(oof, y)]
-        train_res = [sum((c * v for c, v in zip(coef, xi)), Fraction(0)) - t for xi, t in zip(x, y)]
+        residuals = [p - t for p, t in zip(oof, y, strict=False)]
+        train_res = [sum((c * v for c, v in zip(coef, xi, strict=False)), Fraction(0)) - t for xi, t in zip(x, y, strict=False)]
         cv_rmse = rmse(residuals)
         recall = low_energy_recall(y, oof, criterion["k"], tol)
         passes = cv_rmse <= float(tol) and recall >= criterion["min_recall"]
@@ -629,7 +629,7 @@ def evaluate_holdout(spec, topo, hamiltonian: dict, holdout: dict) -> dict:
     rows = [e for e in holdout["entries"] if e["topology_id"] == topo.topology_id]
     y = [exact(e["energy_exact"]) for e in rows]
     pred = [predict(hamiltonian, topo, e["bits"]) for e in rows]
-    residuals = [p - t for p, t in zip(pred, y)]
+    residuals = [p - t for p, t in zip(pred, y, strict=False)]
     value = rmse(residuals)
     ok = bool(rows) and value <= float(tol)
     return make_record(

@@ -334,9 +334,10 @@ def test_a2_validation_rejects_dropped_triplets_and_policy_changes():
         {"plans": [{"framework_id": t, "construction_plan_id": f"{t}_plan_0"} for t in TOPOLOGIES]},
         "run",
     )
-    codes = lambda proposal: {
-        e["code"] for e in validate_hamiltonian_proposal(proposal, packet)["errors"]
-    }
+    def codes(proposal):
+        return {
+            e["code"] for e in validate_hamiltonian_proposal(proposal, packet)["errors"]
+        }
     assert codes(a2(WITH_TRIPLETS)) == {"COMPILER_DOES_NOT_SUPPORT_MODEL_DEGREE"}
     assert codes(a2(WITH_TRIPLETS, "hubo_exact_enumeration")) == set()
     assert codes(a2(PAIRS, policy="exact_A7_B5")) == {"CONSTRAINT_POLICY_CHANGED"}
@@ -516,9 +517,10 @@ def test_a67_cannot_upgrade_checks_or_cite_unsupplied_evidence():
         "unresolved_codes": [],
     }
     assert validate_assessment(good, packet)["status"] == "VALID"
-    codes = lambda changes: {
-        e["code"] for e in validate_assessment({**good, **changes}, packet)["errors"]
-    }
+    def codes(changes):
+        return {
+            e["code"] for e in validate_assessment({**good, **changes}, packet)["errors"]
+        }
     upgraded = [{**good["candidates"][0], "structural_verdict": "PASS_CHECKED_CRITERIA"}]
     assert codes({"candidates": upgraded}) == {"VERDICT_INCONSISTENT_WITH_CHECKS"}
     assert codes({"report_markdown": "see [[S07:p3]]"}) == {"UNKNOWN_CITATION"}
@@ -537,9 +539,10 @@ def test_a67_cannot_upgrade_checks_or_cite_unsupplied_evidence():
     assert codes({"candidates": []}) == {"OMITTED_CANDIDATE"}
     no_lit = validate_assessment({**good, "report_markdown": "ok"}, _a67_packet(passages=False))
     assert {e["code"] for e in no_lit["errors"]} == {"COMPLETE_STATUS_NOT_ALLOWED"}
-    physical = lambda *statuses: _allowed_verdicts(
-        "physical", [{"status": s, "required": True} for s in statuses]
-    )
+    def physical(*statuses):
+        return _allowed_verdicts(
+            "physical", [{"status": s, "required": True} for s in statuses]
+        )
     assert physical("COMPLETED", "FAILED") == {"FAIL"}
     assert physical("COMPLETED", "SKIPPED_TOOL_UNAVAILABLE") == {"INCOMPLETE", "NOT_ASSESSED"}
     assert "PASS_CHECKED_CRITERIA" in physical("COMPLETED", "COMPLETED")
@@ -619,7 +622,7 @@ def test_openrouter_request_follows_the_guide(monkeypatch, tmp_path):
         "choices": [{"finish_reason": "stop", "message": {"content": json.dumps(a1())}}],
     }
     replies = [Response(200, ok)]
-    text, meta = client.complete("A1", [{"role": "user", "content": "{}"}], 500)
+    _text, meta = client.complete("A1", [{"role": "user", "content": "{}"}], 500)
     body = sent["body"]
     assert (
         sent["url"] == "https://openrouter.ai/api/v1/chat/completions"
@@ -694,11 +697,12 @@ def test_deterministic_pipeline_never_imports_the_agent_layer():
 
 def test_langgraph_and_sequential_engines_take_the_same_route(tmp_path):
     pytest.importorskip("langgraph")
-    script = lambda: {
-        "A1": [a1()],
-        "A2": [a2(PAIRS), a2(WITH_TRIPLETS, "hubo_exact_enumeration")],
-        "A67": [a67()],
-    }
+    def script():
+        return {
+            "A1": [a1()],
+            "A2": [a2(PAIRS), a2(WITH_TRIPLETS, "hubo_exact_enumeration")],
+            "A67": [a67()],
+        }
     results = {}
     for engine in ("langgraph", "sequential"):
         run = AgentRun(

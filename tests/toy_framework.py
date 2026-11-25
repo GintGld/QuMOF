@@ -25,7 +25,7 @@ def pm3m_operations():
     ops = []
     for perm in itertools.permutations("xyz"):
         for signs in itertools.product("+-", repeat=3):
-            ops.append(",".join(("-" if s == "-" else "") + v for s, v in zip(signs, perm)))
+            ops.append(",".join(("-" if s == "-" else "") + v for s, v in zip(signs, perm, strict=False)))
     return ops
 
 

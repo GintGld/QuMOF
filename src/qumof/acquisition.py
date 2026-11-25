@@ -67,13 +67,13 @@ def _scores(topo, model: dict, pool: list, labelled: list) -> tuple[list, list]:
     rows = []
     for orbit in pool:
         x = feature_vector(topo, bits_of(orbit), names)
-        pred = sum((c * v for c, v in zip(coef, x)), Fraction(0))
-        committee = [float(sum((c * v for c, v in zip(f, x)), Fraction(0))) for f in folds]
+        pred = sum((c * v for c, v in zip(coef, x, strict=False)), Fraction(0))
+        committee = [float(sum((c * v for c, v in zip(f, x, strict=False)), Fraction(0))) for f in folds]
         mean = sum(committee) / len(committee)
         rows.append(
             {
                 "orbit_id": orbit,
-                "x": [float(v) for v, n in zip(x, names) if n != "constant"],
+                "x": [float(v) for v, n in zip(x, names, strict=False) if n != "constant"],
                 "predicted_eV": float(pred),
                 "uncertainty_eV": math.sqrt(
                     sum((c - mean) ** 2 for c in committee) / len(committee)
@@ -81,7 +81,7 @@ def _scores(topo, model: dict, pool: list, labelled: list) -> tuple[list, list]:
             }
         )
     known = [
-        [float(v) for v, n in zip(feature_vector(topo, bits, names), names) if n != "constant"]
+        [float(v) for v, n in zip(feature_vector(topo, bits, names), names, strict=False) if n != "constant"]
         for bits in labelled
     ]
     return rows, known
@@ -93,7 +93,7 @@ def _normalise(values: list) -> list:
 
 
 def _distance(a, b) -> float:
-    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
+    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b, strict=False)))
 
 
 def _allocate(quota: dict, need: dict, available: dict, total: int) -> dict:
@@ -155,9 +155,9 @@ def select_evaluation_batch(
         rows, known = _scores(topo, model, pools[tid], labelled[tid])
         energy = _normalise([-r["predicted_eV"] for r in rows])
         uncert = _normalise([r["uncertainty_eV"] for r in rows])
-        for r, e, u in zip(rows, energy, uncert):
+        for r, e, u in zip(rows, energy, uncert, strict=False):
             r["energy_score"], r["uncertainty_score"] = e, u
-        n_audit = min(int(math.floor(policy["audit_fraction"] * q + 0.5)), q)
+        n_audit = min(math.floor(policy["audit_fraction"] * q + 0.5), q)
         picks, remaining = [], list(rows)
         for _ in range(q - n_audit):
             dist = [min((_distance(r["x"], k) for k in known), default=1.0) for r in remaining]
@@ -171,7 +171,7 @@ def select_evaluation_batch(
                     r,
                     d,
                 )
-                for r, d in zip(remaining, div)
+                for r, d in zip(remaining, div, strict=False)
             ]
             score, _, best, d = max(scored, key=lambda t: (t[0], [-ord(ch) for ch in t[1]]))
             picks.append(

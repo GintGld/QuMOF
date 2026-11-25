@@ -67,7 +67,8 @@ def test_model_designs_are_compiled_solved_and_scored_against_the_experimental_a
 
 def test_design_contract_rejects_invalid_or_constant_hamiltonians():
     packet = build_packet(MATERIALS["muf7"])
-    codes = lambda d: {e["code"] for e in validate_design(d, packet)["errors"]}
+    def codes(d):
+        return {e["code"] for e in validate_design(d, packet)["errors"]}
     assert codes(design(("length_balance", ["topological"], "penalize_like_pairs"))) == {
         "PREFERENCE_MISMATCH"
     }

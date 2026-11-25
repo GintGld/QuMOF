@@ -125,7 +125,7 @@ def _agents(args) -> int:
             )
             return 2
         combos = [
-            tuple(None if x == "default" else x for x in (c.split(":") + ["default"])[:2])
+            tuple(None if x == "default" else x for x in ([*c.split(":"), "default"])[:2])
             for c in args.combos.split(",")
         ]
         rows = evaluate(
