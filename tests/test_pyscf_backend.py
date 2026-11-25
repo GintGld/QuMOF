@@ -21,7 +21,8 @@ pytestmark = pytest.mark.pyscf
 import numpy as np  # noqa: E402
 from pyscf_toy import write_pyscf_toy_project  # noqa: E402
 
-from qumof import dft, pyscf_worker as worker  # noqa: E402
+from qumof import dft  # noqa: E402
+from qumof import pyscf_worker as worker
 from qumof.intake import load_project, validate_project  # noqa: E402
 from qumof.orchestrator import run_pipeline  # noqa: E402
 from qumof.store import RunStore  # noqa: E402
@@ -91,7 +92,8 @@ def evaluate(s, lattice, elements, frac):
 
 def test_worker_energy_equals_direct_pyscf_plus_d3(tmp_path):
     from pyscf.dispersion import dftd3
-    from pyscf.pbc import dft as pbcdft, gto
+    from pyscf.pbc import dft as pbcdft
+    from pyscf.pbc import gto
 
     s = settings(dispersion="d3bj", compute_stress=False)
     result = run(tmp_path, "scf", SI_LATTICE, ["Si", "Si"], SI_FRAC, s)

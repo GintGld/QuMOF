@@ -16,8 +16,8 @@ _events = None
 
 def _hook(event, args):
     if (
-        _events is not None
-        and event in ("open", "import", "subprocess.Popen")
+        (_events is not None
+        and event in ("open", "import", "subprocess.Popen"))
         or (_events is not None and event.startswith("socket."))
     ):
         _events.append((event, args))
@@ -122,6 +122,7 @@ def test_relative_run_dir(tmp_path, monkeypatch):
 
 def test_acceptance_reports_failure_instead_of_crashing(tmp_path):
     from conftest import copy_fixture
+
     from qumof.acceptance import check_run
 
     root = copy_fixture(tmp_path / "fx", with_harness=True)

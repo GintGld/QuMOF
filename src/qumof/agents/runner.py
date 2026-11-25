@@ -34,7 +34,7 @@ from __future__ import annotations
 import dataclasses
 import json
 from pathlib import Path
-from typing import NotRequired, TypedDict, Any
+from typing import Any, NotRequired, TypedDict
 
 from ..contract import PipelineError, canonical_json, content_hash, make_record
 from ..gateway import review_proposal

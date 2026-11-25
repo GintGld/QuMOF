@@ -4,11 +4,11 @@ import pytest
 
 pytest.importorskip("jsonschema")
 
-from conftest import REPO  # noqa: E402
+from conftest import REPO
 
-from qumof.agents.client import ReplayClient, check_schema  # noqa: E402
-from qumof.agents.controls import load_controls  # noqa: E402
-from qumof.agents.design import build_packet, load_materials, run_benchmark, validate_design  # noqa: E402
+from qumof.agents.client import ReplayClient, check_schema
+from qumof.agents.controls import load_controls
+from qumof.agents.design import build_packet, load_materials, run_benchmark, validate_design
 
 MATERIALS = {m["id"]: m for m in load_materials(REPO / "benchmarks/kang2025")}
 

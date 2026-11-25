@@ -16,13 +16,13 @@ import pytest
 
 pytest.importorskip("jsonschema")
 
-from conftest import REPO  # noqa: E402
-from toy_framework import embedding_protocol, write_toy_milestone_c_project  # noqa: E402
+from conftest import REPO
+from toy_framework import embedding_protocol, write_toy_milestone_c_project
 
-from qumof.agents.client import ReplayClient  # noqa: E402
-from qumof.agents.controls import load_controls  # noqa: E402
-from qumof.agents.runner import AgentRun  # noqa: E402
-from qumof.agents.scheme import scheme_trace, scripted_policies  # noqa: E402
+from qumof.agents.client import ReplayClient
+from qumof.agents.controls import load_controls
+from qumof.agents.runner import AgentRun
+from qumof.agents.scheme import scheme_trace, scripted_policies
 
 ML = {
     "engine": "orb",
@@ -156,6 +156,7 @@ def test_a4_revises_an_inadequate_hamiltonian_and_the_second_pass_succeeds(tmp_p
     """Fixture higher_order: A2 proposes pair models only, fitting fails (MODEL_INADEQUATE); A4 revises to the
     untried triplet model; the pipeline re-runs from fitting and completes with it."""
     from conftest import PROJECT
+
     from qumof.agents.scheme import scripted_a1, scripted_a4, scripted_a67
 
     def pairs_only(packet):

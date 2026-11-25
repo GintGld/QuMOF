@@ -1,19 +1,19 @@
 """Regenerate all numerical data deterministically. Test-author utility, not a learner."""
 
-from pathlib import Path
-from itertools import combinations
-from fractions import Fraction
 import hashlib
 import json
+from fractions import Fraction
+from itertools import combinations
+
 from fixture_core import (
-    ROOT,
     FEATURES,
+    ROOT,
     canonical,
+    correction,
     feasible_states,
     features,
     write_json,
     write_jsonl,
-    correction,
 )
 
 SEED = "MOF_NO_AGENT_FIXTURE_V1"

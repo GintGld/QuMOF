@@ -42,7 +42,8 @@ def _scf(mf, level: dict, conv_tol: float):
 
 
 def compute(job: dict) -> dict:
-    from pyscf import __version__ as pyscf_version, cc, dft, gto, lib, mp, scf
+    from pyscf import __version__ as pyscf_version
+    from pyscf import cc, dft, gto, lib, mp, scf
 
     level, start = job["level"], time.perf_counter()
     method = level["method"]

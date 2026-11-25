@@ -20,8 +20,8 @@ import hashlib
 import json
 from pathlib import Path
 
-from aiida.engine.processes.workchains.workchain import WorkChainSpec
 from aiida.engine import WorkChain, calcfunction, while_
+from aiida.engine.processes.workchains.workchain import WorkChainSpec
 from aiida.orm import Dict, Int, Str
 
 from .contract import PipelineError

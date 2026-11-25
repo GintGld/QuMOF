@@ -375,7 +375,7 @@ def main(argv=None) -> int:
     }
     (out / "summary.json").write_text(json.dumps(summary, indent=1, default=str))
     lines = [
-        f"# MUF-7 full-scheme run (approximate)",
+        "# MUF-7 full-scheme run (approximate)",
         "",
         f"Relaxed candidates: {len(candidates)}; orb-lowest: `{best}` ({'experimental' if best in reference else 'NOT experimental'}); "
         f"experimental minus best other: {summary['experimental_minus_best_other_eV_per_cell']:.3f} eV/cell; "

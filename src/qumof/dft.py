@@ -16,7 +16,6 @@ only on relaxed geometries, residual stress only after a variable-cell relaxatio
 """
 
 from __future__ import annotations
-from typing import Any
 
 import hashlib
 import json
@@ -29,6 +28,7 @@ import time
 from collections import Counter
 from fractions import Fraction
 from pathlib import Path
+from typing import Any
 
 from .contract import JobState, PipelineError, StageStatus, content_hash, make_record
 from .framework import _cart_to_frac, map_to_parent_slots

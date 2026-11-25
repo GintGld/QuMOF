@@ -24,7 +24,7 @@ from ..intake import FIXTURE_PROJECT_TYPE
 TITLE_MATCH = 0.85
 CHUNK_CHARS = 1500
 STOP = set(
-    "a an and are as at be by for from in into is it of on or that the this to with we our via using".split()
+    ["a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "into", "is", "it", "of", "on", "or", "that", "the", "this", "to", "with", "we", "our", "via", "using"]
 )
 
 

@@ -1,7 +1,8 @@
 """Explicit synthetic oracle boundary for integration tests; never use as physical evidence."""
 
 import argparse
-from fixture_core import ROOT, read_json, read_jsonl, write_jsonl, validate_bits, correction
+
+from fixture_core import ROOT, correction, read_json, read_jsonl, validate_bits, write_jsonl
 from generate_fixture import make_record
 
 

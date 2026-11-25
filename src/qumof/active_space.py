@@ -62,7 +62,8 @@ def prepare_active_space(system: dict, protocol: dict) -> dict:
         )
     try:
         import numpy as np
-        from pyscf import __version__ as pyscf_version, ao2mo, gto, lib, mcscf, scf
+        from pyscf import __version__ as pyscf_version
+        from pyscf import ao2mo, gto, lib, mcscf, scf
         from pyscf.tools import fcidump
     except ImportError as exc:
         raise PipelineError(

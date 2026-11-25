@@ -1,13 +1,13 @@
 """Offline acceptance harness. Never import this module into the learner."""
 
+import json
+import subprocess
+import sys
 from collections import deque
 from copy import deepcopy
 from fractions import Fraction
 from itertools import product
-from pathlib import Path
-import json
-import subprocess
-import sys
+
 from fixture_core import *
 
 

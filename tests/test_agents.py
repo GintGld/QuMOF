@@ -10,21 +10,21 @@ import pytest
 pytest.importorskip("jsonschema")
 pytest.importorskip("yaml")
 
-from conftest import PROJECT, REPO  # noqa: E402
+from conftest import PROJECT, REPO
 
-from qumof.agents import client as client_mod  # noqa: E402
-from qumof.agents import packets  # noqa: E402
-from qumof.agents.client import AgentCallError, ReplayClient, check_schema  # noqa: E402
-from qumof.agents.controls import load_controls  # noqa: E402
-from qumof.agents.literature import LocalPapers, gather_evidence  # noqa: E402
-from qumof.agents.runner import AgentRun  # noqa: E402
+from qumof.agents import client as client_mod
+from qumof.agents import packets
+from qumof.agents.client import AgentCallError, ReplayClient, check_schema
+from qumof.agents.controls import load_controls
+from qumof.agents.literature import LocalPapers, gather_evidence
+from qumof.agents.runner import AgentRun
 from qumof.agents.validate import (
     _allowed_verdicts,
     validate_assessment,
     validate_hamiltonian_proposal,
-)  # noqa: E402
-from qumof.intake import load_project, validate_project  # noqa: E402
-from qumof.orchestrator import run_pipeline  # noqa: E402
+)
+from qumof.intake import load_project, validate_project
+from qumof.orchestrator import run_pipeline
 
 TOPOLOGIES = ("ring12", "prism6")
 COUNTS = [{"species_id": "A", "count": 6}, {"species_id": "B", "count": 6}]

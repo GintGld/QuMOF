@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from fractions import Fraction
-from functools import lru_cache
+from functools import cache
 
 from . import clusters
 from .contract import PipelineError, StageStatus, content_hash, exact, make_record
@@ -27,7 +27,7 @@ CLUSTER_PREFIXES = {
 TRANSFERABLE = ("constant",) + tuple(CLUSTER_PREFIXES)
 
 
-@lru_cache(maxsize=None)
+@cache
 def site_orbits(topo) -> tuple:
     """Slot orbits under the topology's symmetry permutations, ordered by smallest slot index."""
     orbits = {}

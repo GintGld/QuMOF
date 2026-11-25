@@ -49,8 +49,9 @@ def _orb(protocol: dict):
     loader = getattr(pretrained, ORB_MODELS[protocol["model"]])
     weights = protocol.get("checkpoint_path")
     if not weights:  # orb's default URL, cached locally by cached_path after the first download
-        from cached_path import cached_path
         import inspect
+
+        from cached_path import cached_path
 
         weights = str(cached_path(inspect.signature(loader).parameters["weights_path"].default))
     device = protocol.get("device", "cpu")

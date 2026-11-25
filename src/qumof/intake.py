@@ -8,12 +8,12 @@ into the same dataclass, with ``project_type`` kept separate.
 """
 
 from __future__ import annotations
-from typing import Any
 
 import copy
 import json
 from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import Any
 
 from .contract import PipelineError, StageStatus, content_hash, make_record
 
@@ -56,7 +56,7 @@ class TopologySpec:
     sublattice_counts: tuple = ()
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "TopologySpec":
+    def from_dict(cls, d: dict[str, Any]) -> TopologySpec:
         try:
             return cls(
                 topology_id=d["topology_id"],

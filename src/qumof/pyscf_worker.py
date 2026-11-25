@@ -111,11 +111,11 @@ def basis_and_pseudo_hashes(settings: dict, elements) -> dict:
     for el in sorted(set(elements)):
         try:
             out["basis"][el] = _sha(gto.basis.load(_per_element(settings["basis"], el), el))
-        except Exception as exc:  # noqa: BLE001 - reported as a typed error
+        except Exception as exc:
             raise WorkerError("UNSUPPORTED_BASIS_FOR_ELEMENT", f"{el}: {exc}") from exc
         try:
             out["pseudo"][el] = _sha(gto.pseudo.load(_per_element(settings["pseudo"], el), el))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise WorkerError("UNSUPPORTED_PSEUDOPOTENTIAL_FOR_ELEMENT", f"{el}: {exc}") from exc
     return out
 
@@ -145,7 +145,7 @@ def probe(spec: dict) -> dict:
                     "detail": f"{xc} ({xc_type}); forces and stress need a local or semilocal functional",
                 }
             )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         errors.append({"code": "UNSUPPORTED_XC", "detail": f"{xc}: {exc}"})
     try:
         disp = parse_dispersion(settings["dispersion"])
@@ -166,7 +166,7 @@ def probe(spec: dict) -> dict:
         errors.append({"code": exc.code, "detail": exc.detail})
     except ImportError as exc:
         errors.append({"code": "BACKEND_UNAVAILABLE", "detail": f"pyscf-dispersion: {exc}"})
-    except Exception as exc:  # noqa: BLE001 - e.g. no damping parameters for this functional
+    except Exception as exc:
         errors.append(
             {
                 "code": "UNSUPPORTED_DISPERSION",
@@ -194,7 +194,7 @@ def probe(spec: dict) -> dict:
 
             if cupy.cuda.runtime.getDeviceCount() < 1:
                 errors.append({"code": "BACKEND_UNAVAILABLE", "detail": "no CUDA device"})
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append({"code": "BACKEND_UNAVAILABLE", "detail": f"gpu4pyscf/cupy: {exc}"})
     return result
 
@@ -293,7 +293,9 @@ def _stress_cpu(mf, cell, settings: dict, kmesh):
     open_shell = settings["magnetic_state"]["nspin"] == 2
     delta = None
     if settings["integral_scheme"] == "multigrid":
-        from pyscf.pbc.grad import rks as rks_grad, rks_stress, uks as uks_grad, uks_stress
+        from pyscf.pbc.grad import rks as rks_grad
+        from pyscf.pbc.grad import rks_stress, uks_stress
+        from pyscf.pbc.grad import uks as uks_grad
 
         ref = (dft.UKS if open_shell else dft.RKS)(cell, xc=settings["xc"])
         ref.mo_coeff, ref.mo_occ, ref.mo_energy = mf.mo_coeff, mf.mo_occ, mf.mo_energy
@@ -339,8 +341,8 @@ class Evaluator:
             "nelectron": int(cell.nelectron),
             "mesh": [int(x) for x in cell.mesh],
             "kmesh": list(kmesh),
-            "spin_2S": int(cell.spin),
-        }  # pyright: ignore[reportArgumentType]  # pyscf types Cell.spin as Optional; build() always sets it
+            "spin_2S": int(cell.spin), # pyright: ignore[reportArgumentType]  # pyscf types Cell.spin as Optional; build() always sets it
+        }  
         if not mf.converged:
             raise SCFNotConverged(f"SCF not converged after {mf.max_cycle} cycles")
         self.dm_last = _host(mf.make_rdm1())
@@ -559,7 +561,7 @@ def run(job: dict, log) -> dict:
         )
     except WorkerError as exc:
         result["error"] = {"code": exc.code, "detail": exc.detail}
-    except Exception as exc:  # noqa: BLE001 - every failure leaves a typed record, never an energy
+    except Exception as exc:
         result["error"] = {
             "code": "ENGINE_ERROR",
             "detail": f"{type(exc).__name__}: {exc}",

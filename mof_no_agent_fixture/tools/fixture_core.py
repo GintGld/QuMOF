@@ -1,10 +1,10 @@
 """Pure-Python utilities for a SYNTHETIC occupation-model test fixture."""
 
-from fractions import Fraction
-from itertools import combinations, product
-from pathlib import Path
 import json
 import math
+from fractions import Fraction
+from itertools import combinations
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FEATURES = ["constant", "unlike_distance_1", "unlike_distance_2", "BBB_paths"]

@@ -90,7 +90,7 @@ def mofchecker_check(cif_text: str) -> dict:
                 for k, v in descriptors.items()
             },
         }
-    except Exception as exc:  # noqa: BLE001 - a tool failure is recorded, not hidden
+    except Exception as exc:
         return {
             "status": StageStatus.FAILED.value,
             "tool": "mofchecker",
@@ -132,7 +132,7 @@ def zeopp_check(cif_text: str, probe_radius_A: float = 1.2) -> dict:
             "values": values,
             "stderr": proc.stderr[-500:],
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {
             "status": StageStatus.FAILED.value,
             "tool": "zeo++",

@@ -5,9 +5,9 @@ inputs reuses committed stages and never resubmits evaluator jobs.
 """
 
 from __future__ import annotations
-from typing import TypeAlias, Any
 
 from fractions import Fraction
+from typing import Any, TypeAlias
 
 from . import (
     acquisition,

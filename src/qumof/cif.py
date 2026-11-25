@@ -7,13 +7,13 @@ are kept with every parse.
 """
 
 from __future__ import annotations
-from typing import TypeAlias
 
 import hashlib
 import math
 import re
 import shlex
 from fractions import Fraction
+from typing import TypeAlias
 
 from .contract import PipelineError
 

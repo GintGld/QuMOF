@@ -8,11 +8,11 @@ recorded ancillas and a stated penalty bound). ``compile_one_hot`` encodes slots
 """
 
 from __future__ import annotations
-from collections.abc import Iterable
 
+from collections.abc import Iterable
 from fractions import Fraction
 from itertools import product
-from math import lcm, inf
+from math import inf, lcm
 
 from .configuration_model import feature_polynomial, predict
 from .contract import PipelineError, StageStatus, make_record

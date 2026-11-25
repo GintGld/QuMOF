@@ -16,13 +16,16 @@ from toy_framework import write_toy_milestone_c_project
 from qumof import (
     acquisition,
     clusters,
-    configuration_model as cm,
     geometry_match,
     references,
     refinement,
+    structures,
     transfer,
+    validation,
 )
-from qumof import structures, validation
+from qumof import (
+    configuration_model as cm,
+)
 from qumof.contract import PipelineError, StopReason
 from qumof.intake import load_project, validate_project
 from qumof.orchestrator import run_pipeline
