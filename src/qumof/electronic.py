@@ -4,6 +4,7 @@ The only backend in this build is the fixture's synthetic mock evaluator, run
 as a separate process so the learner never imports the oracle formula.
 Periodic DFT, embedding, VQE, SQD and FCI are reported as not executed.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -21,8 +22,8 @@ EVALUATOR_SCRIPT = "tools/mock_evaluator.py"
 # Active-space export (T07.1) is active_space.py; ED/CASCI/VQE/SQD (T07.2) are electronic_solvers.py. The
 # finite-cluster subtractive embedding and its assembler (T07.3) are embedding.py, run as the "embedding" stage of
 # physical projects; corrections reach a ranking only when the scheme is VALIDATED.
-#TODO: Task 07 — WF-in-DFT (projection) embedding and the published Fe-MOF-74 reference; only the finite-cluster
-#TODO: subtractive scheme exists, validated against an independent full-system calculation.
+# TODO: Task 07 — WF-in-DFT (projection) embedding and the published Fe-MOF-74 reference; only the finite-cluster
+# TODO: subtractive scheme exists, validated against an independent full-system calculation.
 
 
 class SyntheticFixtureBackend:
@@ -42,28 +43,55 @@ class SyntheticFixtureBackend:
             if topo is None:
                 raise PipelineError("UNKNOWN_TOPOLOGY", r["topology_id"])
             validate_occupation(r["bits"], topo.n_sites, n_ones_of(self.spec, topo))
-        payload = {"backend": self.name, "script_sha256": self.script_sha256, "case": self.spec.case,
-                   "correction_mode": self.spec.correction_mode,
-                   "requests": [{"topology_id": r["topology_id"], "bits": list(r["bits"])} for r in requests]}
+        payload = {
+            "backend": self.name,
+            "script_sha256": self.script_sha256,
+            "case": self.spec.case,
+            "correction_mode": self.spec.correction_mode,
+            "requests": [
+                {"topology_id": r["topology_id"], "bits": list(r["bits"])} for r in requests
+            ],
+        }
         job_id = "job:" + content_hash(payload)[:20]  # idempotency key = scientific inputs
         job_dir = self.store.jobs / job_id.replace(":", "__")
         meta_path = job_dir / "job.json"
-        if meta_path.exists() and json.loads(meta_path.read_text())["state"] == JobState.SUCCEEDED.value:
+        if (
+            meta_path.exists()
+            and json.loads(meta_path.read_text())["state"] == JobState.SUCCEEDED.value
+        ):
             self.store.bump("evaluator_cache_hits")
             self.store.log("job_reused", job_id=job_id, purpose=purpose)
             return job_id
         job_dir.mkdir(parents=True, exist_ok=True)
-        (job_dir / "requests.jsonl").write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in payload["requests"]))
-        meta = {"job_id": job_id, "purpose": purpose, "state": JobState.RUNNING.value, **{k: v for k, v in payload.items() if k != "requests"},
-                "n_requests": len(requests)}
+        (job_dir / "requests.jsonl").write_text(
+            "".join(json.dumps(r, sort_keys=True) + "\n" for r in payload["requests"])
+        )
+        meta = {
+            "job_id": job_id,
+            "purpose": purpose,
+            "state": JobState.RUNNING.value,
+            **{k: v for k, v in payload.items() if k != "requests"},
+            "n_requests": len(requests),
+        }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True))
         self.store.bump("evaluator_submissions")
         self.store.log("job_submitted", job_id=job_id, purpose=purpose, n_requests=len(requests))
-        cmd = [sys.executable, str(self.script), "--input", str(job_dir / "requests.jsonl"),
-               "--out", str(job_dir / "responses.jsonl"), "--case", self.spec.case,
-               "--correction", self.spec.correction_mode]
+        cmd = [
+            sys.executable,
+            str(self.script),
+            "--input",
+            str(job_dir / "requests.jsonl"),
+            "--out",
+            str(job_dir / "responses.jsonl"),
+            "--case",
+            self.spec.case,
+            "--correction",
+            self.spec.correction_mode,
+        ]
         try:
-            proc = subprocess.run(cmd, cwd=self.spec.root, capture_output=True, text=True, timeout=self.timeout_s)
+            proc = subprocess.run(
+                cmd, cwd=self.spec.root, capture_output=True, text=True, timeout=self.timeout_s
+            )
             ok = proc.returncode == 0
             meta["stderr"] = proc.stderr[-4000:]
         except subprocess.TimeoutExpired:
@@ -85,8 +113,16 @@ class SyntheticFixtureBackend:
         if meta["state"] != JobState.SUCCEEDED.value:
             raise PipelineError("JOB_FAILED", f"{job_id}: {meta.get('stderr', '')[:200]}")
         job_dir = self.store.jobs / job_id.replace(":", "__")
-        requests = [json.loads(l) for l in (job_dir / "requests.jsonl").read_text().splitlines() if l.strip()]
-        responses = [json.loads(l) for l in (job_dir / "responses.jsonl").read_text().splitlines() if l.strip()]
+        requests = [
+            json.loads(l)
+            for l in (job_dir / "requests.jsonl").read_text().splitlines()
+            if l.strip()
+        ]
+        responses = [
+            json.loads(l)
+            for l in (job_dir / "responses.jsonl").read_text().splitlines()
+            if l.strip()
+        ]
         if len(responses) != len(requests):
             raise PipelineError("RESPONSE_COUNT_MISMATCH", f"{len(responses)} != {len(requests)}")
         mode = self.spec.correction_mode
@@ -96,37 +132,84 @@ class SyntheticFixtureBackend:
             topo = self.spec.topologies[req["topology_id"]]
             if resp.get("topology_id") != req["topology_id"] or resp.get("bits") != req["bits"]:
                 raise PipelineError("RESPONSE_IDENTITY_MISMATCH", f"line {line}")
-            if resp.get("configuration_id") != configuration_id(topo, req["bits"]) or resp.get("orbit_id") != orbit_id(topo, req["bits"]):
+            if resp.get("configuration_id") != configuration_id(topo, req["bits"]) or resp.get(
+                "orbit_id"
+            ) != orbit_id(topo, req["bits"]):
                 raise PipelineError("RESPONSE_IDENTITY_MISMATCH", f"line {line}")
-            common = {"input_hash": content_hash(req), "job_id": job_id, "backend": self.name,
-                      "configuration_id": resp["configuration_id"], "orbit_id": resp["orbit_id"],
-                      "topology_id": req["topology_id"], "bits": req["bits"],
-                      "raw_output_ref": f"{job_dir.name}/responses.jsonl#{line}"}
+            common = {
+                "input_hash": content_hash(req),
+                "job_id": job_id,
+                "backend": self.name,
+                "configuration_id": resp["configuration_id"],
+                "orbit_id": resp["orbit_id"],
+                "topology_id": req["topology_id"],
+                "bits": req["bits"],
+                "raw_output_ref": f"{job_dir.name}/responses.jsonl#{line}",
+            }
             if resp.get("status") != "SUCCEEDED":
-                results.append(make_record("CalculationResult", self.spec.provenance, **common, status=resp.get("status"),
-                                           base_energy_exact=None, correction_exact=None, corrected_energy_exact=None))
+                results.append(
+                    make_record(
+                        "CalculationResult",
+                        self.spec.provenance,
+                        **common,
+                        status=resp.get("status"),
+                        base_energy_exact=None,
+                        correction_exact=None,
+                        corrected_energy_exact=None,
+                    )
+                )
                 continue
-            for field, want in (("energy_unit", "eV"), ("normalization", "per_abstract_12_slot_formula_unit"),
-                                ("n_formula_units", topo.n_formula_units), ("provenance", self.spec.provenance),
-                                ("comparison_group", comparison_group), ("fidelity", expected_fidelity),
-                                ("correction_mode", mode), ("corrected_fidelity", corrected_fidelity)):
+            for field, want in (
+                ("energy_unit", "eV"),
+                ("normalization", "per_abstract_12_slot_formula_unit"),
+                ("n_formula_units", topo.n_formula_units),
+                ("provenance", self.spec.provenance),
+                ("comparison_group", comparison_group),
+                ("fidelity", expected_fidelity),
+                ("correction_mode", mode),
+                ("corrected_fidelity", corrected_fidelity),
+            ):
                 if resp.get(field) != want:
-                    code = "PROVENANCE_MISMATCH" if field == "provenance" else "INCOMPATIBLE_" + field.upper()
-                    raise PipelineError(code, f"{resp['configuration_id']}: {resp.get(field)!r} != {want!r}")
+                    code = (
+                        "PROVENANCE_MISMATCH"
+                        if field == "provenance"
+                        else "INCOMPATIBLE_" + field.upper()
+                    )
+                    raise PipelineError(
+                        code, f"{resp['configuration_id']}: {resp.get(field)!r} != {want!r}"
+                    )
             base = exact(resp["energy_eV"])
             corr = exact(resp["synthetic_correction_eV"])
             if abs(base + corr - exact(resp["corrected_energy_eV"])) > Fraction(1, 10**12):
                 raise PipelineError("CORRECTION_ARITHMETIC_MISMATCH", resp["configuration_id"])
-            results.append(make_record(
-                "CalculationResult", self.spec.provenance, **common, status="SUCCEEDED", method="synthetic_fixture_oracle",
-                energy_unit="eV", normalization="per_abstract_12_slot_formula_unit", n_formula_units=topo.n_formula_units,
-                comparison_group=comparison_group, base_fidelity=expected_fidelity,
-                base_energy_eV=float(base), base_energy_exact=str(base),
-                correction_mode=mode, correction_kind="ARTIFICIAL_BOOKKEEPING_TEST (not embedding, not DFT)",
-                correction_eV=float(corr), correction_exact=str(corr),
-                corrected_fidelity=corrected_fidelity, corrected_energy_eV=float(base + corr),
-                corrected_energy_exact=str(base + corr), convergence="NOT_APPLICABLE_SYNTHETIC",
-                uncertainty={"numerical": "exact synthetic label", "model_systematic": "not assessed"}))
+            results.append(
+                make_record(
+                    "CalculationResult",
+                    self.spec.provenance,
+                    **common,
+                    status="SUCCEEDED",
+                    method="synthetic_fixture_oracle",
+                    energy_unit="eV",
+                    normalization="per_abstract_12_slot_formula_unit",
+                    n_formula_units=topo.n_formula_units,
+                    comparison_group=comparison_group,
+                    base_fidelity=expected_fidelity,
+                    base_energy_eV=float(base),
+                    base_energy_exact=str(base),
+                    correction_mode=mode,
+                    correction_kind="ARTIFICIAL_BOOKKEEPING_TEST (not embedding, not DFT)",
+                    correction_eV=float(corr),
+                    correction_exact=str(corr),
+                    corrected_fidelity=corrected_fidelity,
+                    corrected_energy_eV=float(base + corr),
+                    corrected_energy_exact=str(base + corr),
+                    convergence="NOT_APPLICABLE_SYNTHETIC",
+                    uncertainty={
+                        "numerical": "exact synthetic label",
+                        "model_systematic": "not assessed",
+                    },
+                )
+            )
         return results
 
 
@@ -135,13 +218,24 @@ def electronic_stage_status(spec) -> dict:
     off = StageStatus.DISABLED_BY_CONFIG.value
     physical = ev["backend"] == "periodic_dft"
     return {
-        "periodic_dft": off if not ev["dft_enabled"] else (StageStatus.COMPLETED.value if physical else StageStatus.UNSUPPORTED.value),
-        "embedding_correction": off if not ev["embedding_enabled"] else
-        ("SEE_EMBEDDING_STAGE" if physical else StageStatus.UNSUPPORTED.value),
+        "periodic_dft": off
+        if not ev["dft_enabled"]
+        else (StageStatus.COMPLETED.value if physical else StageStatus.UNSUPPORTED.value),
+        "embedding_correction": off
+        if not ev["embedding_enabled"]
+        else ("SEE_EMBEDDING_STAGE" if physical else StageStatus.UNSUPPORTED.value),
         # Cluster active spaces run inside the embedding stage when protocols.embedding.high_level is active_space.
-        "active_space_fci": StageStatus.NOT_RUN.value, "vqe": StageStatus.NOT_RUN.value,
+        "active_space_fci": StageStatus.NOT_RUN.value,
+        "vqe": StageStatus.NOT_RUN.value,
         "sqd_hardware": off if not ev["hardware_enabled"] else StageStatus.UNSUPPORTED.value,
-        "note": (("DFT ranking; embedding corrections are assembled in the embedding stage and applied only when "
-                  "validated." if ev["embedding_enabled"] else "DFT-only ranking; no correction is applied.") if physical else
-                 "Corrections in this run are artificial fixture bookkeeping tests, not electronic-structure results."),
+        "note": (
+            (
+                "DFT ranking; embedding corrections are assembled in the embedding stage and applied only when "
+                "validated."
+                if ev["embedding_enabled"]
+                else "DFT-only ranking; no correction is applied."
+            )
+            if physical
+            else "Corrections in this run are artificial fixture bookkeeping tests, not electronic-structure results."
+        ),
     }

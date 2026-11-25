@@ -3,6 +3,7 @@
 One status vocabulary, typed error codes, content hashing and record helpers
 used across every module boundary.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -86,7 +87,12 @@ def content_hash(obj) -> str:
 
 def make_record(record_type: str, provenance: str, **fields) -> dict:
     """Immutable artifact record; artifact_id is derived from its content."""
-    body = {"record_type": record_type, "schema_version": SCHEMA_VERSION, "provenance": provenance, **fields}
+    body = {
+        "record_type": record_type,
+        "schema_version": SCHEMA_VERSION,
+        "provenance": provenance,
+        **fields,
+    }
     body = json.loads(canonical_json(body))  # normalise Fractions/sets to JSON types
     body["artifact_id"] = f"{record_type}:{content_hash(body)[:20]}"
     return body

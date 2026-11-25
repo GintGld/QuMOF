@@ -19,6 +19,7 @@ sanity checks (e.g. two substituents overlap in a strained net). Substituted lin
 Results are cached under ``<project>/generated/<key>/`` (key = protocol + blocks + composition + worker hash), so
 re-loading a project never re-runs the builder.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -34,8 +35,17 @@ from pathlib import Path
 from .contract import PipelineError, content_hash
 
 BUILDERS = ("pormake", "tobacco")
-REQUIRED = ("builder", "node_block", "edge_block", "max_node_rmsd_A", "max_nodes_per_cell", "max_candidates",
-            "min_substitution_sites", "max_substitution_sites", "max_multiplier")
+REQUIRED = (
+    "builder",
+    "node_block",
+    "edge_block",
+    "max_node_rmsd_A",
+    "max_nodes_per_cell",
+    "max_candidates",
+    "min_substitution_sites",
+    "max_substitution_sites",
+    "max_multiplier",
+)
 WORKER = Path(__file__).with_name("pormake_worker.py")
 ENVIRONMENT_KEYS = ("python", "timeout_s")  # not part of the scientific cache key
 
@@ -44,37 +54,89 @@ def protocol_errors(gen, blocks: dict) -> list:
     """(code, field, detail) for protocols.topology_generation."""
     if not isinstance(gen, dict):
         return [("SCIENTIFIC_SPEC_MISSING", "protocols.topology_generation", "")]
-    errors = [("SCIENTIFIC_SPEC_MISSING", f"protocols.topology_generation.{k}", "") for k in REQUIRED if gen.get(k) is None]
+    errors = [
+        ("SCIENTIFIC_SPEC_MISSING", f"protocols.topology_generation.{k}", "")
+        for k in REQUIRED
+        if gen.get(k) is None
+    ]
     if errors:
         return errors
     if gen["builder"] == "tobacco":
-        #TODO: Task 01 — ToBaCCo adapter (tobacco_3.0 is a script repository, not a package; needs a pinned checkout
-        #TODO: and its template/block CIF conventions behind this same interface).
-        return [("UNSUPPORTED_TOPOLOGY_BUILDER", "protocols.topology_generation.builder",
-                 "ToBaCCo is not installable as a package in this build; use pormake")]
+        # TODO: Task 01 — ToBaCCo adapter (tobacco_3.0 is a script repository, not a package; needs a pinned checkout
+        # TODO: and its template/block CIF conventions behind this same interface).
+        return [
+            (
+                "UNSUPPORTED_TOPOLOGY_BUILDER",
+                "protocols.topology_generation.builder",
+                "ToBaCCo is not installable as a package in this build; use pormake",
+            )
+        ]
     if gen["builder"] not in BUILDERS:
-        return [("UNSUPPORTED_TOPOLOGY_BUILDER", "protocols.topology_generation.builder", str(gen["builder"]))]
+        return [
+            (
+                "UNSUPPORTED_TOPOLOGY_BUILDER",
+                "protocols.topology_generation.builder",
+                str(gen["builder"]),
+            )
+        ]
     for key in ("node_block", "edge_block"):
         ref = gen[key]
         if not isinstance(ref, dict) or not ref.get("block_id") or not ref.get("pormake_id"):
-            errors.append(("SCIENTIFIC_SPEC_MISSING", f"protocols.topology_generation.{key}", "block_id and pormake_id"))
+            errors.append(
+                (
+                    "SCIENTIFIC_SPEC_MISSING",
+                    f"protocols.topology_generation.{key}",
+                    "block_id and pormake_id",
+                )
+            )
         elif ref["block_id"] not in blocks:
-            errors.append(("UNKNOWN_BUILDING_BLOCK", f"protocols.topology_generation.{key}.block_id", ref["block_id"]))
+            errors.append(
+                (
+                    "UNKNOWN_BUILDING_BLOCK",
+                    f"protocols.topology_generation.{key}.block_id",
+                    ref["block_id"],
+                )
+            )
     for i, sub in enumerate(gen.get("substituents") or []):
-        if not all(sub.get(k) for k in ("block_id", "pormake_id", "root_element", "replace_element")):
-            errors.append(("SCIENTIFIC_SPEC_MISSING", f"protocols.topology_generation.substituents[{i}]",
-                           "block_id, pormake_id, root_element, replace_element"))
+        if not all(
+            sub.get(k) for k in ("block_id", "pormake_id", "root_element", "replace_element")
+        ):
+            errors.append(
+                (
+                    "SCIENTIFIC_SPEC_MISSING",
+                    f"protocols.topology_generation.substituents[{i}]",
+                    "block_id, pormake_id, root_element, replace_element",
+                )
+            )
         elif sub["block_id"] not in blocks:
-            errors.append(("UNKNOWN_BUILDING_BLOCK", f"protocols.topology_generation.substituents[{i}].block_id", sub["block_id"]))
+            errors.append(
+                (
+                    "UNKNOWN_BUILDING_BLOCK",
+                    f"protocols.topology_generation.substituents[{i}].block_id",
+                    sub["block_id"],
+                )
+            )
     nets = gen.get("nets", "auto")
-    if nets != "auto" and not (isinstance(nets, list) and nets and all(isinstance(n, str) for n in nets)):
-        errors.append(("SCIENTIFIC_SPEC_MISSING", "protocols.topology_generation.nets", "'auto' or a list of RCSR net names"))
+    if nets != "auto" and not (
+        isinstance(nets, list) and nets and all(isinstance(n, str) for n in nets)
+    ):
+        errors.append(
+            (
+                "SCIENTIFIC_SPEC_MISSING",
+                "protocols.topology_generation.nets",
+                "'auto' or a list of RCSR net names",
+            )
+        )
     if not 0 < gen["min_substitution_sites"] <= gen["max_substitution_sites"]:
-        errors.append(("INVALID_NUMBER", "protocols.topology_generation.min/max_substitution_sites", ""))
+        errors.append(
+            ("INVALID_NUMBER", "protocols.topology_generation.min/max_substitution_sites", "")
+        )
     return errors
 
 
-def choose_supercell(n_edges: int, fractions: list, min_sites: int, max_sites: int, max_multiplier: int):
+def choose_supercell(
+    n_edges: int, fractions: list, min_sites: int, max_sites: int, max_multiplier: int
+):
     """Smallest diagonal supercell (then the most isotropic) with integral sublattice counts within the limits."""
     options = []
     for diag in itertools.product(range(1, max_multiplier + 1), repeat=3):
@@ -97,8 +159,9 @@ def _decoration_check(lattice: dict, blocks: dict, builder_protocol: dict, subst
     info = lattice_info_for_builder(lattice, builder_protocol)
     for species in sorted(substitutions):
         try:
-            ParentSubstitutionBuilder(info, blocks, builder_protocol).build(lattice["structure"].get("topology_id", ""),
-                                                                           [species] * len(lattice["slots"]))
+            ParentSubstitutionBuilder(info, blocks, builder_protocol).build(
+                lattice["structure"].get("topology_id", ""), [species] * len(lattice["slots"])
+            )
         except BuildFailure as exc:
             return {"code": exc.code, "detail": exc.detail, "species_on_every_slot": species}
     return None
@@ -121,54 +184,119 @@ def generate_topologies(config: dict, root: Path) -> dict:
         return {"errors": errors}
     python = _resolve_python(root, gen.get("python"))
     if python is None:
-        return {"errors": [{"code": "BACKEND_UNAVAILABLE", "check": "protocols.topology_generation.python",
-                            "detail": f"interpreter not found: {gen.get('python')}"}]}
+        return {
+            "errors": [
+                {
+                    "code": "BACKEND_UNAVAILABLE",
+                    "check": "protocols.topology_generation.python",
+                    "detail": f"interpreter not found: {gen.get('python')}",
+                }
+            ]
+        }
     worker_sha = hashlib.sha256(WORKER.read_bytes()).hexdigest()
     composition = (config.get("chemistry") or {}).get("composition_by_sublattice") or {}
     scientific = {k: v for k, v in gen.items() if k not in ENVIRONMENT_KEYS}
-    key = content_hash({"protocol": scientific, "worker_sha256": worker_sha, "composition": composition,
-                        "blocks": {b: blocks[b] for b in sorted(blocks)}})[:20]
+    key = content_hash(
+        {
+            "protocol": scientific,
+            "worker_sha256": worker_sha,
+            "composition": composition,
+            "blocks": {b: blocks[b] for b in sorted(blocks)},
+        }
+    )[:20]
     out_dir = root / "generated" / key
     result_path = out_dir / "result.json"
-    if not (result_path.exists() and json.loads(result_path.read_text()).get("status") == "SUCCEEDED"):
+    if not (
+        result_path.exists() and json.loads(result_path.read_text()).get("status") == "SUCCEEDED"
+    ):
         out_dir.mkdir(parents=True, exist_ok=True)
-        job = {"node_bb": gen["node_block"]["pormake_id"], "edge_bb": gen["edge_block"]["pormake_id"],
-               "nets": None if gen.get("nets", "auto") == "auto" else gen["nets"],
-               "max_node_rmsd_A": gen["max_node_rmsd_A"], "max_nodes_per_cell": gen["max_nodes_per_cell"],
-               "max_candidates": gen["max_candidates"],
-               "substituents": {s["block_id"]: {"pormake_block": s["pormake_id"], "root_element": s["root_element"],
-                                                "replace_element": s["replace_element"]}
-                                for s in gen.get("substituents") or []}}
+        job = {
+            "node_bb": gen["node_block"]["pormake_id"],
+            "edge_bb": gen["edge_block"]["pormake_id"],
+            "nets": None if gen.get("nets", "auto") == "auto" else gen["nets"],
+            "max_node_rmsd_A": gen["max_node_rmsd_A"],
+            "max_nodes_per_cell": gen["max_nodes_per_cell"],
+            "max_candidates": gen["max_candidates"],
+            "substituents": {
+                s["block_id"]: {
+                    "pormake_block": s["pormake_id"],
+                    "root_element": s["root_element"],
+                    "replace_element": s["replace_element"],
+                }
+                for s in gen.get("substituents") or []
+            },
+        }
         (out_dir / "job.json").write_text(json.dumps(job, indent=1, sort_keys=True))
         try:
-            proc = subprocess.run([python, str(WORKER), "job.json"], cwd=out_dir, capture_output=True, text=True,
-                                  timeout=gen.get("timeout_s", 3600))
+            proc = subprocess.run(
+                [python, str(WORKER), "job.json"],
+                cwd=out_dir,
+                capture_output=True,
+                text=True,
+                timeout=gen.get("timeout_s", 3600),
+            )
             (out_dir / "worker.log").write_text(proc.stdout[-20000:] + proc.stderr[-20000:])
         except subprocess.TimeoutExpired:
-            return {"errors": [{"code": "BACKEND_UNAVAILABLE", "check": "protocols.topology_generation",
-                                "detail": "topology builder timed out"}]}
+            return {
+                "errors": [
+                    {
+                        "code": "BACKEND_UNAVAILABLE",
+                        "check": "protocols.topology_generation",
+                        "detail": "topology builder timed out",
+                    }
+                ]
+            }
         if not result_path.exists():
-            return {"errors": [{"code": "BACKEND_UNAVAILABLE", "check": "protocols.topology_generation",
-                                "detail": f"builder produced no result: {(out_dir / 'worker.log').read_text()[-300:]}"}]}
+            return {
+                "errors": [
+                    {
+                        "code": "BACKEND_UNAVAILABLE",
+                        "check": "protocols.topology_generation",
+                        "detail": f"builder produced no result: {(out_dir / 'worker.log').read_text()[-300:]}",
+                    }
+                ]
+            }
     result = json.loads(result_path.read_text())
     if result["status"] != "SUCCEEDED":
-        return {"errors": [{"code": (result.get("error") or {}).get("code", "TOPOLOGY_GENERATION_FAILED"),
-                            "check": "protocols.topology_generation", "detail": str(result.get("error"))[:300]}]}
+        return {
+            "errors": [
+                {
+                    "code": (result.get("error") or {}).get("code", "TOPOLOGY_GENERATION_FAILED"),
+                    "check": "protocols.topology_generation",
+                    "detail": str(result.get("error"))[:300],
+                }
+            ]
+        }
 
     # Derived substituent geometry replaces the declared group of each substituted block.
     substitutions, sub_errors = {}, []
     for s in gen.get("substituents") or []:
         rule = result["substituents"].get(s["block_id"]) or {}
         if "group" not in rule:
-            sub_errors.append({"code": "SUBSTITUENT_DERIVATION_FAILED", "check": "protocols.topology_generation.substituents",
-                               "detail": f"{s['block_id']} from {s['pormake_id']}: {rule.get('error')}"})
+            sub_errors.append(
+                {
+                    "code": "SUBSTITUENT_DERIVATION_FAILED",
+                    "check": "protocols.topology_generation.substituents",
+                    "detail": f"{s['block_id']} from {s['pormake_id']}: {rule.get('error')}",
+                }
+            )
             continue
-        parent = blocks[s["block_id"]].get("substitution", {}).get("parent_block") or gen["edge_block"]["block_id"]
-        substitutions[s["block_id"]] = {"parent_block": parent, "replace_element": s["replace_element"],
-                                        "group": rule["group"], "derived_from": f"pormake:{s['pormake_id']}"}
+        parent = (
+            blocks[s["block_id"]].get("substitution", {}).get("parent_block")
+            or gen["edge_block"]["block_id"]
+        )
+        substitutions[s["block_id"]] = {
+            "parent_block": parent,
+            "replace_element": s["replace_element"],
+            "group": rule["group"],
+            "derived_from": f"pormake:{s['pormake_id']}",
+        }
     if sub_errors:
         return {"errors": sub_errors}
-    work_blocks = {bid: ({**b, "substitution": substitutions[bid]} if bid in substitutions else b) for bid, b in blocks.items()}
+    work_blocks = {
+        bid: ({**b, "substitution": substitutions[bid]} if bid in substitutions else b)
+        for bid, b in blocks.items()
+    }
 
     fractions = [Fraction(str(f)) for sub in composition.values() for f in sub.values()]
     builder_protocol = config["protocols"].get("builder") or {}
@@ -178,18 +306,30 @@ def generate_topologies(config: dict, root: Path) -> dict:
         if cand["status"] != "BUILT":
             rejected.append({**cand, "reason": "BUILD_FAILED"})
             continue
-        matrix = choose_supercell(cand["n_edges"], fractions, gen["min_substitution_sites"], gen["max_substitution_sites"],
-                                  gen["max_multiplier"])
+        matrix = choose_supercell(
+            cand["n_edges"],
+            fractions,
+            gen["min_substitution_sites"],
+            gen["max_substitution_sites"],
+            gen["max_multiplier"],
+        )
         if matrix is None:
-            rejected.append({**cand, "reason": "NO_SUPERCELL_WITHIN_LIMITS",
-                             "detail": f"{cand['n_edges']} slots per cell; need [{gen['min_substitution_sites']}, "
-                                       f"{gen['max_substitution_sites']}] with integral counts"})
+            rejected.append(
+                {
+                    **cand,
+                    "reason": "NO_SUPERCELL_WITHIN_LIMITS",
+                    "detail": f"{cand['n_edges']} slots per cell; need [{gen['min_substitution_sites']}, "
+                    f"{gen['max_substitution_sites']}] with integral counts",
+                }
+            )
             continue
         cif_path = out_dir / cand["cif"]
         text = cif_path.read_text()
         try:
             parent = parse_cif(text, f"pormake:{net}")
-            lattice = build_slot_lattice(parent, net, matrix, config["chemistry"], work_blocks, builder_protocol)
+            lattice = build_slot_lattice(
+                parent, net, matrix, config["chemistry"], work_blocks, builder_protocol
+            )
             problems = lattice["errors"]
         except PipelineError as exc:
             problems = [{"code": exc.code, "detail": exc.detail}]
@@ -198,25 +338,59 @@ def generate_topologies(config: dict, root: Path) -> dict:
             continue
         failure = _decoration_check(lattice, work_blocks, builder_protocol, substitutions)
         if failure:
-            rejected.append({**cand, "reason": "SUBSTITUTED_FRAMEWORK_NOT_BUILDABLE", "detail": failure})
+            rejected.append(
+                {**cand, "reason": "SUBSTITUTED_FRAMEWORK_NOT_BUILDABLE", "detail": failure}
+            )
             continue
-        accepted.append({**cand, "supercell_matrix": matrix, "n_substitution_sites": len(lattice["slots"])})
-        sources.append({"topology_id": net, "cif": os.path.relpath(cif_path, root),
-                        "sha256": hashlib.sha256(text.encode()).hexdigest(),
-                        "source": (f"generated by PORMAKE {result['versions']['pormake']} on RCSR net {net} from blocks "
-                                   f"{result['node_bb']} + {result['edge_bb']} (node RMSD {cand['max_node_rmsd_A']} A)"),
-                        "declared_net": net, "supercell_matrices": [matrix]})
-    report = {"builder": gen["builder"], "cache_key": key, "versions": result["versions"],
-              "node_block": gen["node_block"], "edge_block": gen["edge_block"],
-              "n_nets_considered": result["n_nets_considered"], "accepted": accepted, "rejected": rejected,
-              "substitutions": substitutions, "selection_rule": (
-                  f"every node fits {result['node_bb']} with RMSD <= {gen['max_node_rmsd_A']} A; <= "
-                  f"{gen['max_nodes_per_cell']} nodes per cell; best {gen['max_candidates']} by RMSD; smallest supercell "
-                  f"with integral composition and {gen['min_substitution_sites']}-{gen['max_substitution_sites']} slots"),
-              "provenance": "builder output: idealised, unrelaxed frameworks"}
+        accepted.append(
+            {**cand, "supercell_matrix": matrix, "n_substitution_sites": len(lattice["slots"])}
+        )
+        sources.append(
+            {
+                "topology_id": net,
+                "cif": os.path.relpath(cif_path, root),
+                "sha256": hashlib.sha256(text.encode()).hexdigest(),
+                "source": (
+                    f"generated by PORMAKE {result['versions']['pormake']} on RCSR net {net} from blocks "
+                    f"{result['node_bb']} + {result['edge_bb']} (node RMSD {cand['max_node_rmsd_A']} A)"
+                ),
+                "declared_net": net,
+                "supercell_matrices": [matrix],
+            }
+        )
+    report = {
+        "builder": gen["builder"],
+        "cache_key": key,
+        "versions": result["versions"],
+        "node_block": gen["node_block"],
+        "edge_block": gen["edge_block"],
+        "n_nets_considered": result["n_nets_considered"],
+        "accepted": accepted,
+        "rejected": rejected,
+        "substitutions": substitutions,
+        "selection_rule": (
+            f"every node fits {result['node_bb']} with RMSD <= {gen['max_node_rmsd_A']} A; <= "
+            f"{gen['max_nodes_per_cell']} nodes per cell; best {gen['max_candidates']} by RMSD; smallest supercell "
+            f"with integral composition and {gen['min_substitution_sites']}-{gen['max_substitution_sites']} slots"
+        ),
+        "provenance": "builder output: idealised, unrelaxed frameworks",
+    }
     (out_dir / "generation_report.json").write_text(json.dumps(report, indent=1, sort_keys=True))
     if not sources:
-        return {"report": report, "errors": [{"code": "NO_TOPOLOGY_GENERATED", "check": "protocols.topology_generation",
-                                              "detail": f"{len(rejected)} nets rejected"}]}
-    return {"sources": sources, "candidate_topology_ids": [s["topology_id"] for s in sources],
-            "substitutions": substitutions, "report": report, "errors": []}
+        return {
+            "report": report,
+            "errors": [
+                {
+                    "code": "NO_TOPOLOGY_GENERATED",
+                    "check": "protocols.topology_generation",
+                    "detail": f"{len(rejected)} nets rejected",
+                }
+            ],
+        }
+    return {
+        "sources": sources,
+        "candidate_topology_ids": [s["topology_id"] for s in sources],
+        "substitutions": substitutions,
+        "report": report,
+        "errors": [],
+    }

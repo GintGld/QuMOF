@@ -4,6 +4,7 @@ Every candidate is decoded and its physical cost re-evaluated from the Hamiltoni
 objective. ``branch_and_bound`` certifies optimality without enumeration and reports an honest gap when it stops
 at its node or time limit. QAOA simulation lives in ``qaoa.py``.
 """
+
 from __future__ import annotations
 
 import math
@@ -24,25 +25,48 @@ def exact_enumeration(spec, topo, hamiltonian: dict, encoding: dict | None = Non
     encoded = _IntPoly(encoding) if encoding is not None else None
     for bits in states_of(spec, topo):
         energy = predict(hamiltonian, topo, bits)
-        if encoding is not None and encoded is not None and encoded(complete_assignment(encoding, bits)) != energy:
+        if (
+            encoding is not None
+            and encoded is not None
+            and encoded(complete_assignment(encoding, bits)) != energy
+        ):
             # On feasible states the penalty vanishes, so the encoding must equal the physical energy.
-            raise PipelineError("ENCODING_DECODE_MISMATCH", f"{topo.topology_id}:{bit_string(bits)}")
+            raise PipelineError(
+                "ENCODING_DECODE_MISMATCH", f"{topo.topology_id}:{bit_string(bits)}"
+            )
         table.append((bit_string(bits), energy))
     minimum = min(e for _, e in table)
     minimizers = sorted(b for b, e in table if e == minimum)
     return make_record(
-        "SolverResult", spec.provenance, solver="exact_enumeration", topology_id=topo.topology_id,
-        hamiltonian_id=hamiltonian["artifact_id"], encoding_id=encoding["artifact_id"] if encoding else None,
-        optimality_status="OPTIMAL_CERTIFIED_EXHAUSTIVE", feasibility="all candidates satisfy composition",
-        n_feasible=len(table), minimum_energy_eV=float(minimum), minimum_energy_exact=str(minimum),
-        minimizing_bitstrings=minimizers, energy_basis="physical surrogate (no penalty)",
+        "SolverResult",
+        spec.provenance,
+        solver="exact_enumeration",
+        topology_id=topo.topology_id,
+        hamiltonian_id=hamiltonian["artifact_id"],
+        encoding_id=encoding["artifact_id"] if encoding else None,
+        optimality_status="OPTIMAL_CERTIFIED_EXHAUSTIVE",
+        feasibility="all candidates satisfy composition",
+        n_feasible=len(table),
+        minimum_energy_eV=float(minimum),
+        minimum_energy_exact=str(minimum),
+        minimizing_bitstrings=minimizers,
+        energy_basis="physical surrogate (no penalty)",
         encoded_objective_cross_check=encoding is not None,
-        energies=[[b, str(e)] for b, e in table], wall_time_s=round(time.perf_counter() - start, 4),
+        energies=[[b, str(e)] for b, e in table],
+        wall_time_s=round(time.perf_counter() - start, 4),
     )
 
 
-def simulated_annealing(spec, topo, hamiltonian: dict, seed: int, n_starts: int = 8, n_steps: int = 3000,
-                        t_start: float = 0.05, t_end: float = 1e-4) -> dict:
+def simulated_annealing(
+    spec,
+    topo,
+    hamiltonian: dict,
+    seed: int,
+    n_starts: int = 8,
+    n_steps: int = 3000,
+    t_start: float = 0.05,
+    t_end: float = 1e-4,
+) -> dict:
     """Multi-start annealing with composition-preserving A/B swaps; uncertified heuristic."""
     rng = random.Random(seed)
     n, k = topo.n_sites, n_ones_of(spec, topo)
@@ -71,16 +95,30 @@ def simulated_annealing(spec, topo, hamiltonian: dict, seed: int, n_starts: int 
         per_start.append((bit_string(best_bits), predict(hamiltonian, topo, best_bits)))
     best_energy = min(e for _, e in per_start)
     return make_record(
-        "SolverResult", spec.provenance, solver="simulated_annealing", topology_id=topo.topology_id,
-        hamiltonian_id=hamiltonian["artifact_id"], optimality_status="UNCERTIFIED_HEURISTIC",
-        configuration={"seed": seed, "n_starts": n_starts, "n_steps": n_steps, "t_start": t_start, "t_end": t_end,
-                       "move": "swap one A and one B site (composition preserving)"},
-        minimum_energy_eV=float(best_energy), minimum_energy_exact=str(best_energy),
-        candidates=sorted({b for b, _ in per_start}), per_start=[[b, str(e)] for b, e in per_start],
+        "SolverResult",
+        spec.provenance,
+        solver="simulated_annealing",
+        topology_id=topo.topology_id,
+        hamiltonian_id=hamiltonian["artifact_id"],
+        optimality_status="UNCERTIFIED_HEURISTIC",
+        configuration={
+            "seed": seed,
+            "n_starts": n_starts,
+            "n_steps": n_steps,
+            "t_start": t_start,
+            "t_end": t_end,
+            "move": "swap one A and one B site (composition preserving)",
+        },
+        minimum_energy_eV=float(best_energy),
+        minimum_energy_exact=str(best_energy),
+        candidates=sorted({b for b, _ in per_start}),
+        per_start=[[b, str(e)] for b, e in per_start],
     )
 
 
-def branch_and_bound(spec, topo, hamiltonian: dict, node_limit: int = 1_000_000, time_limit_s: float = 60.0) -> dict:
+def branch_and_bound(
+    spec, topo, hamiltonian: dict, node_limit: int = 1_000_000, time_limit_s: float = 60.0
+) -> dict:
     """Exact fixed-count minimisation of the physical polynomial (any degree) by depth-first branch and bound.
 
     Coefficients are scaled to integers by their exact common denominator, so rounding error is zero.
@@ -89,8 +127,9 @@ def branch_and_bound(spec, topo, hamiltonian: dict, node_limit: int = 1_000_000,
     This is a valid lower bound, so a completed search certifies optimality. At a limit the best feasible
     incumbent is returned with LB = min over unexplored node bounds and gap = incumbent - LB.
     """
-    #TODO: Task 04 — return a Job for solves longer than the stage budget; LP/SDP bounds for large cells.
+    # TODO: Task 04 — return a Job for solves longer than the stage budget; LP/SDP bounds for large cells.
     from .encoding import physical_polynomial
+
     require_single_count(topo, "branch_and_bound")
     start = time.perf_counter()
     n, k = topo.n_sites, n_ones_of(spec, topo)
@@ -124,7 +163,14 @@ def branch_and_bound(spec, topo, hamiltonian: dict, node_limit: int = 1_000_000,
     chosen = []
     for _ in range(k):
         options = [i for i in range(n) if i not in chosen]
-        chosen.append(min(options, key=lambda i: predict(hamiltonian, topo, [int(j in chosen or j == i) for j in range(n)])))
+        chosen.append(
+            min(
+                options,
+                key=lambda i: predict(
+                    hamiltonian, topo, [int(j in chosen or j == i) for j in range(n)]
+                ),
+            )
+        )
     best_bits = sum(1 << i for i in chosen)
     best = bound(n, best_bits)
     stack, nodes, limit_hit = [(0, 0)], 0, None
@@ -143,37 +189,68 @@ def branch_and_bound(spec, topo, hamiltonian: dict, node_limit: int = 1_000_000,
         if depth == n:
             best, best_bits = lb, ones
             continue
-        stack.append((depth + 1, ones))              # x_depth = 0 explored second
+        stack.append((depth + 1, ones))  # x_depth = 0 explored second
         stack.append((depth + 1, ones | 1 << depth))  # x_depth = 1 explored first
     open_bounds = [b for b in (bound(d, o) for d, o in stack) if b is not None] if limit_hit else []
-    assert best is not None # FIXME maybe do something with algorithm to guarantee that `best` is not None
+    assert (
+        best is not None
+    )  # FIXME maybe do something with algorithm to guarantee that `best` is not None
     lower = min([best] + open_bounds)
     to_ev = lambda v: Fraction(v, scale * max_deg)  # noqa: E731
     bits = [best_bits >> i & 1 for i in range(n)]
-    energy = predict(hamiltonian, topo, bits)  # decoded and re-evaluated independently of the search arithmetic
+    energy = predict(
+        hamiltonian, topo, bits
+    )  # decoded and re-evaluated independently of the search arithmetic
     if energy != to_ev(best):
-        raise PipelineError("SOLVER_ENERGY_MISMATCH", f"{bit_string(bits)}: {energy} != {to_ev(best)}")
+        raise PipelineError(
+            "SOLVER_ENERGY_MISMATCH", f"{bit_string(bits)}: {energy} != {to_ev(best)}"
+        )
     return make_record(
-        "SolverResult", spec.provenance, solver="branch_and_bound", topology_id=topo.topology_id,
+        "SolverResult",
+        spec.provenance,
+        solver="branch_and_bound",
+        topology_id=topo.topology_id,
         hamiltonian_id=hamiltonian["artifact_id"],
-        optimality_status="OPTIMAL_CERTIFIED_BRANCH_AND_BOUND" if not limit_hit else f"UNCERTIFIED_{limit_hit}",
-        stop_reason=limit_hit, nodes=nodes, node_limit=node_limit, time_limit_s=time_limit_s,
-        minimum_energy_eV=float(energy), minimum_energy_exact=str(energy), minimizing_bitstrings=[bit_string(bits)],
-        lower_bound_exact=str(to_ev(lower)), optimality_gap_eV=float(to_ev(best - lower)),
+        optimality_status="OPTIMAL_CERTIFIED_BRANCH_AND_BOUND"
+        if not limit_hit
+        else f"UNCERTIFIED_{limit_hit}",
+        stop_reason=limit_hit,
+        nodes=nodes,
+        node_limit=node_limit,
+        time_limit_s=time_limit_s,
+        minimum_energy_eV=float(energy),
+        minimum_energy_exact=str(energy),
+        minimizing_bitstrings=[bit_string(bits)],
+        lower_bound_exact=str(to_ev(lower)),
+        optimality_gap_eV=float(to_ev(best - lower)),
         coefficient_scaling={"integer_scale": scale * max_deg, "rounding_error_eV": 0},
         note="one minimiser is returned; degenerate minimisers are enumerated only by exact_enumeration",
-        wall_time_s=round(time.perf_counter() - start, 4))
+        wall_time_s=round(time.perf_counter() - start, 4),
+    )
 
 
 def quantum_solver_status(spec) -> dict:
-    #TODO: Task 04 — real IBM devices (qiskit-ibm-runtime SamplerV2 with an account); fake devices only now (qpu.py).
+    # TODO: Task 04 — real IBM devices (qiskit-ibm-runtime SamplerV2 with an account); fake devices only now (qpu.py).
     enabled = spec.config["optimizer"].get("quantum_enabled", False)
-    fake = enabled and (spec.config["optimizer"].get("quantum_protocol") or {}).get("kind") == "qpu_fake_device"
-    return {"qaoa_simulation": StageStatus.COMPLETED.value if enabled else StageStatus.DISABLED_BY_CONFIG.value,
-            "qpu_hardware": StageStatus.DISABLED_BY_CONFIG.value,
-            "qpu_fake_device": StageStatus.COMPLETED.value if fake else StageStatus.DISABLED_BY_CONFIG.value,
-            "note": ("QAOA statevector simulation benchmark on the frozen Hamiltonian; not evidence of quantum speedup."
-                     if enabled else "No circuits executed; fixed-count swap reachability is a graph check only.")}
+    fake = (
+        enabled
+        and (spec.config["optimizer"].get("quantum_protocol") or {}).get("kind")
+        == "qpu_fake_device"
+    )
+    return {
+        "qaoa_simulation": StageStatus.COMPLETED.value
+        if enabled
+        else StageStatus.DISABLED_BY_CONFIG.value,
+        "qpu_hardware": StageStatus.DISABLED_BY_CONFIG.value,
+        "qpu_fake_device": StageStatus.COMPLETED.value
+        if fake
+        else StageStatus.DISABLED_BY_CONFIG.value,
+        "note": (
+            "QAOA statevector simulation benchmark on the frozen Hamiltonian; not evidence of quantum speedup."
+            if enabled
+            else "No circuits executed; fixed-count swap reachability is a graph check only."
+        ),
+    }
 
 
 def table_from_result(result: dict) -> list:

@@ -1,4 +1,5 @@
 """Offline/oracle isolation, resume without duplicate submissions, and run-dir integrity."""
+
 import json
 import os
 import sys
@@ -14,8 +15,11 @@ _events = None
 
 
 def _hook(event, args):
-    if _events is not None and event in ("open", "import", "subprocess.Popen") or (
-            _events is not None and event.startswith("socket.")):
+    if (
+        _events is not None
+        and event in ("open", "import", "subprocess.Popen")
+        or (_events is not None and event.startswith("socket."))
+    ):
         _events.append((event, args))
 
 
@@ -31,16 +35,34 @@ def test_learner_never_touches_harness_oracle_or_network(tmp_path):
     finally:
         events, _events = _events, None
     assert report["pipeline_status"] == "COMPLETED"
-    opened = [os.fsdecode(a[0]) for e, a in events if e == "open" and a and isinstance(a[0], (str, bytes, os.PathLike))]
+    opened = [
+        os.fsdecode(a[0])
+        for e, a in events
+        if e == "open" and a and isinstance(a[0], (str, bytes, os.PathLike))
+    ]
     assert any("/data/" in p for p in opened)  # the hook really observed learner reads
-    forbidden = [p for p in opened if "/harness/" in p or "/reference_outputs/" in p
-                 or p.endswith(("fixture_core.py", "generate_fixture.py", "oracle_definition.json"))]
+    forbidden = [
+        p
+        for p in opened
+        if "/harness/" in p
+        or "/reference_outputs/" in p
+        or p.endswith(("fixture_core.py", "generate_fixture.py", "oracle_definition.json"))
+    ]
     assert not forbidden, forbidden
     imported = {a[0] for e, a in events if e == "import"}
-    assert not imported & {"fixture_core", "generate_fixture", "mock_evaluator", "socket", "urllib.request", "http.client"}
+    assert not imported & {
+        "fixture_core",
+        "generate_fixture",
+        "mock_evaluator",
+        "socket",
+        "urllib.request",
+        "http.client",
+    }
     assert not [e for e, _ in events if e.startswith("socket.")]
     popen = [a for e, a in events if e == "subprocess.Popen"]
-    assert len(popen) == 1 and str(FIXTURE / "tools/mock_evaluator.py") in [str(x) for x in popen[0][1]]
+    assert len(popen) == 1 and str(FIXTURE / "tools/mock_evaluator.py") in [
+        str(x) for x in popen[0][1]
+    ]
 
 
 def _state(run_dir):
@@ -50,7 +72,9 @@ def _state(run_dir):
 def test_rerun_reuses_every_stage_and_never_resubmits(tmp_path):
     spec = load_project(PROJECT, correction_mode="topology_dependent")
     first = run_pipeline(spec, tmp_path / "run")
-    second = run_pipeline(load_project(PROJECT, correction_mode="topology_dependent"), tmp_path / "run")
+    second = run_pipeline(
+        load_project(PROJECT, correction_mode="topology_dependent"), tmp_path / "run"
+    )
     assert first["artifact_id"] == second["artifact_id"]
     assert _state(tmp_path / "run")["counters"]["evaluator_submissions"] == 1
     events = [json.loads(l) for l in (tmp_path / "run/events.jsonl").read_text().splitlines()]
@@ -61,7 +85,13 @@ def test_resume_after_interruption_during_evaluation_uses_job_cache(tmp_path):
     spec = load_project(PROJECT)
     first = run_pipeline(spec, tmp_path / "run")
     state = _state(tmp_path / "run")
-    for stage in ("evaluation", "ranking", "validation", "report"):  # crash after the job finished, before commit
+    # crash after the job finished, before commit
+    for stage in (
+        "evaluation",
+        "ranking",
+        "validation",
+        "report",
+    ):
         state["stages"].pop(stage)
     (tmp_path / "run/state.json").write_text(json.dumps(state))
     second = run_pipeline(load_project(PROJECT), tmp_path / "run")
@@ -72,6 +102,7 @@ def test_resume_after_interruption_during_evaluation_uses_job_cache(tmp_path):
 
 def test_failed_evaluator_job_never_becomes_energy(tmp_path):
     from conftest import copy_fixture
+
     root = copy_fixture(tmp_path / "fx")
     (root / "tools/mock_evaluator.py").write_text("import sys\nsys.exit('backend crashed')\n")
     report = run_pipeline(load_project(root / "project.json"), tmp_path / "run")
@@ -92,10 +123,13 @@ def test_relative_run_dir(tmp_path, monkeypatch):
 def test_acceptance_reports_failure_instead_of_crashing(tmp_path):
     from conftest import copy_fixture
     from qumof.acceptance import check_run
+
     root = copy_fixture(tmp_path / "fx", with_harness=True)
     (root / "tools/mock_evaluator.py").write_text("import sys\nsys.exit('backend crashed')\n")
     spec = load_project(root / "project.json")
-    result = check_run(spec, {**run_pipeline(spec, tmp_path / "run"), "_run_dir": str(tmp_path / "run")})
+    result = check_run(
+        spec, {**run_pipeline(spec, tmp_path / "run"), "_run_dir": str(tmp_path / "run")}
+    )
     assert result["status"] == "FAIL" and result["n_failed"] > 0
 
 

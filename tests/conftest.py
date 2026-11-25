@@ -1,4 +1,5 @@
 """Test harness. Tests may read harness/ and reference_outputs/; the pipeline under test may not."""
+
 import json
 import shutil
 import sys
@@ -30,6 +31,7 @@ def fixture_core():
     if tools not in sys.path:
         sys.path.insert(0, tools)
     import fixture_core as fc  # pyright: ignore[reportMissingImports]  # on sys.path only at runtime (inserted above)
+
     return fc
 
 
@@ -45,6 +47,7 @@ def copy_fixture(dst: Path, with_harness: bool = False) -> Path:
 def toy_run(tmp_path_factory):
     """One complete SYNTHETIC toy physical-project run (CIF slot lattice + mock pw.x), shared by Milestone B tests."""
     from toy_framework import write_toy_project
+
     project = write_toy_project(tmp_path_factory.mktemp("toy_project"))
     spec = load_project(project)
     run_dir = tmp_path_factory.mktemp("toy_run")
@@ -52,7 +55,10 @@ def toy_run(tmp_path_factory):
 
 
 def load_artifacts(run_dir, record_type):
-    return [json.loads(p.read_text()) for p in sorted((Path(run_dir) / "artifacts").glob(f"{record_type}__*.json"))]
+    return [
+        json.loads(p.read_text())
+        for p in sorted((Path(run_dir) / "artifacts").glob(f"{record_type}__*.json"))
+    ]
 
 
 @pytest.fixture(scope="session")

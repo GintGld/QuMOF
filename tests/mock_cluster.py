@@ -6,6 +6,7 @@ with a level-dependent constant and pair strength, so E_high - E_low depends on 
 geometry. The same level always gives the same energy, so high = low gives a zero correction.
 MOCK_CLUSTER_MODE=fail_high makes every non-DFT level fail (a missing high-level term).
 """
+
 import json
 import math
 import os
@@ -21,14 +22,27 @@ def main():
     level = job["level"]
     kind = "DFT" if level["method"] == "DFT" else "high"
     if kind == "high" and os.environ.get("MOCK_CLUSTER_MODE") == "fail_high":
-        result = {"status": "FAILED", "error": {"code": "NOT_CONVERGED", "detail": "mock"}, "energy_Ha": None}
+        result = {
+            "status": "FAILED",
+            "error": {"code": "NOT_CONVERGED", "detail": "mock"},
+            "energy_Ha": None,
+        }
     else:
         els, xyz = job["elements"], job["coords_A"]
         energy = sum(MU_HA[e] + (SHIFT_HA[e] if kind == "high" else 0.0) for e in els)
-        energy -= PAIR_HA[kind] * sum(math.exp(-math.dist(xyz[i], xyz[j]))
-                                      for i in range(len(els)) for j in range(i + 1, len(els)))
-        result = {"status": "SUCCEEDED", "energy_Ha": energy, "converged": True, "error": None,
-                  "details": {"engine": "mock_cluster (SYNTHETIC)"}, "versions": {"mock_cluster": "1"}}
+        energy -= PAIR_HA[kind] * sum(
+            math.exp(-math.dist(xyz[i], xyz[j]))
+            for i in range(len(els))
+            for j in range(i + 1, len(els))
+        )
+        result = {
+            "status": "SUCCEEDED",
+            "energy_Ha": energy,
+            "converged": True,
+            "error": None,
+            "details": {"engine": "mock_cluster (SYNTHETIC)"},
+            "versions": {"mock_cluster": "1"},
+        }
     json.dump(result, open("result.json", "w"), indent=1, sort_keys=True)
 
 

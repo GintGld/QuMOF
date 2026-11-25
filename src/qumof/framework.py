@@ -9,6 +9,7 @@ The builder decorates the parent by explicit, declared substitution rules
 (``ParentSubstitutionBuilder``). Construction failures are BuildFailure records
 with a reason, never energies.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -22,16 +23,97 @@ from .contract import PipelineError, StageStatus, content_hash, make_record
 
 # Cordero et al., Dalton Trans. 2008, 2832 (low-spin values for Mn/Fe/Co).
 COVALENT_RADII_A = {
-    "H": 0.31, "B": 0.84, "C": 0.76, "N": 0.71, "O": 0.66, "F": 0.57, "Si": 1.11, "P": 1.07, "S": 1.05,
-    "Cl": 1.02, "Br": 1.20, "I": 1.39, "Li": 1.28, "Na": 1.66, "Mg": 1.41, "Al": 1.21, "K": 2.03, "Ca": 1.76,
-    "Sc": 1.70, "Ti": 1.60, "V": 1.53, "Cr": 1.39, "Mn": 1.39, "Fe": 1.32, "Co": 1.26, "Ni": 1.24, "Cu": 1.32,
-    "Zn": 1.22, "Ga": 1.22, "Sr": 1.95, "Y": 1.90, "Zr": 1.75, "Nb": 1.64, "Mo": 1.54, "Ru": 1.46, "Rh": 1.42,
-    "Pd": 1.39, "Ag": 1.45, "Cd": 1.44, "In": 1.42, "Sn": 1.39, "Ba": 2.15, "La": 2.07, "Ce": 2.04, "Hf": 1.75,
-    "W": 1.62, "Pt": 1.36, "Au": 1.36, "Pb": 1.46, "Bi": 1.48,
+    "H": 0.31,
+    "B": 0.84,
+    "C": 0.76,
+    "N": 0.71,
+    "O": 0.66,
+    "F": 0.57,
+    "Si": 1.11,
+    "P": 1.07,
+    "S": 1.05,
+    "Cl": 1.02,
+    "Br": 1.20,
+    "I": 1.39,
+    "Li": 1.28,
+    "Na": 1.66,
+    "Mg": 1.41,
+    "Al": 1.21,
+    "K": 2.03,
+    "Ca": 1.76,
+    "Sc": 1.70,
+    "Ti": 1.60,
+    "V": 1.53,
+    "Cr": 1.39,
+    "Mn": 1.39,
+    "Fe": 1.32,
+    "Co": 1.26,
+    "Ni": 1.24,
+    "Cu": 1.32,
+    "Zn": 1.22,
+    "Ga": 1.22,
+    "Sr": 1.95,
+    "Y": 1.90,
+    "Zr": 1.75,
+    "Nb": 1.64,
+    "Mo": 1.54,
+    "Ru": 1.46,
+    "Rh": 1.42,
+    "Pd": 1.39,
+    "Ag": 1.45,
+    "Cd": 1.44,
+    "In": 1.42,
+    "Sn": 1.39,
+    "Ba": 2.15,
+    "La": 2.07,
+    "Ce": 2.04,
+    "Hf": 1.75,
+    "W": 1.62,
+    "Pt": 1.36,
+    "Au": 1.36,
+    "Pb": 1.46,
+    "Bi": 1.48,
 }
-METALS = {"Li", "Na", "Mg", "Al", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Sr",
-          "Y", "Zr", "Nb", "Mo", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Ba", "La", "Ce", "Hf", "W", "Pt", "Au",
-          "Pb", "Bi"}
+METALS = {
+    "Li",
+    "Na",
+    "Mg",
+    "Al",
+    "K",
+    "Ca",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Ga",
+    "Sr",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "In",
+    "Sn",
+    "Ba",
+    "La",
+    "Ce",
+    "Hf",
+    "W",
+    "Pt",
+    "Au",
+    "Pb",
+    "Bi",
+}
 SLOT_MATCH_TOL = 1e-3  # fractional coordinate tolerance when matching slot centroids under symmetry
 GRAPH_REPRESENTATION = "periodic_slot_lattice_from_cif"
 _IMAGES = tuple(itertools.product((-1, 0, 1), repeat=3))
@@ -52,10 +134,28 @@ def _sub(a, b) -> tuple:
 
 def _cart_to_frac(lattice, r) -> tuple:
     (a, b, c) = lattice
-    det = (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0]))
-    inv = [[(b[1] * c[2] - b[2] * c[1]) / det, (a[2] * c[1] - a[1] * c[2]) / det, (a[1] * b[2] - a[2] * b[1]) / det],
-           [(b[2] * c[0] - b[0] * c[2]) / det, (a[0] * c[2] - a[2] * c[0]) / det, (a[2] * b[0] - a[0] * b[2]) / det],
-           [(b[0] * c[1] - b[1] * c[0]) / det, (a[1] * c[0] - a[0] * c[1]) / det, (a[0] * b[1] - a[1] * b[0]) / det]]
+    det = (
+        a[0] * (b[1] * c[2] - b[2] * c[1])
+        - a[1] * (b[0] * c[2] - b[2] * c[0])
+        + a[2] * (b[0] * c[1] - b[1] * c[0])
+    )
+    inv = [
+        [
+            (b[1] * c[2] - b[2] * c[1]) / det,
+            (a[2] * c[1] - a[1] * c[2]) / det,
+            (a[1] * b[2] - a[2] * b[1]) / det,
+        ],
+        [
+            (b[2] * c[0] - b[0] * c[2]) / det,
+            (a[0] * c[2] - a[2] * c[0]) / det,
+            (a[2] * b[0] - a[0] * b[2]) / det,
+        ],
+        [
+            (b[0] * c[1] - b[1] * c[0]) / det,
+            (a[1] * c[0] - a[0] * c[1]) / det,
+            (a[0] * b[1] - a[1] * b[0]) / det,
+        ],
+    ]
     return tuple(sum(r[k] * inv[k][j] for k in range(3)) for j in range(3))
 
 
@@ -67,20 +167,33 @@ def _wrap(x: float) -> float:
 def expand_supercell(structure: dict, matrix) -> dict:
     """Replicate a P1 structure by a diagonal integer supercell matrix."""
     diag = [matrix[i][i] for i in range(3)]
-    if any(matrix[i][j] for i in range(3) for j in range(3) if i != j) or any(type(n) is not int or n < 1 for n in diag):
-        raise PipelineError("UNSUPPORTED_SUPERCELL_MATRIX", f"{matrix}: only positive diagonal matrices are supported")
+    if any(matrix[i][j] for i in range(3) for j in range(3) if i != j) or any(
+        type(n) is not int or n < 1 for n in diag
+    ):
+        raise PipelineError(
+            "UNSUPPORTED_SUPERCELL_MATRIX",
+            f"{matrix}: only positive diagonal matrices are supported",
+        )
     lattice = tuple(tuple(v * diag[k] for v in structure["lattice"][k]) for k in range(3))
     atoms = []
     for shift in itertools.product(*(range(n) for n in diag)):
         for atom in structure["atoms"]:
-            atoms.append({**atom, "frac": tuple((atom["frac"][k] + shift[k]) / diag[k] for k in range(3))})
+            atoms.append(
+                {**atom, "frac": tuple((atom["frac"][k] + shift[k]) / diag[k] for k in range(3))}
+            )
     return {"lattice": lattice, "atoms": atoms, "supercell_diagonal": diag}
 
 
 def _perpendicular_widths(lattice) -> list:
     a = lattice
-    cross = [tuple(a[(k + 1) % 3][(c + 1) % 3] * a[(k + 2) % 3][(c + 2) % 3]
-                   - a[(k + 1) % 3][(c + 2) % 3] * a[(k + 2) % 3][(c + 1) % 3] for c in range(3)) for k in range(3)]
+    cross = [
+        tuple(
+            a[(k + 1) % 3][(c + 1) % 3] * a[(k + 2) % 3][(c + 2) % 3]
+            - a[(k + 1) % 3][(c + 2) % 3] * a[(k + 2) % 3][(c + 1) % 3]
+            for c in range(3)
+        )
+        for k in range(3)
+    ]
     volume = abs(sum(a[0][c] * cross[0][c] for c in range(3)))
     return [volume / _norm(cross[k]) for k in range(3)]
 
@@ -104,7 +217,11 @@ def _close_pairs(structure: dict, cutoff_of, max_cutoff: float):
                 d0, d1, d2 = fj[0] - fi0, fj[1] - fi1, fj[2] - fi2
                 i0, i1, i2 = -round(d0), -round(d1), -round(d2)
                 d0, d1, d2 = d0 + i0, d1 + i1, d2 + i2
-                x, y, z = d0 * ax + d1 * bx + d2 * cx, d0 * ay + d1 * by + d2 * cy, d0 * az + d1 * bz + d2 * cz
+                x, y, z = (
+                    d0 * ax + d1 * bx + d2 * cx,
+                    d0 * ay + d1 * by + d2 * cy,
+                    d0 * az + d1 * bz + d2 * cz,
+                )
                 r2 = x * x + y * y + z * z
                 if r2 <= limit:
                     r = math.sqrt(r2)
@@ -128,8 +245,11 @@ def bond_graph(structure: dict, tolerance: float) -> list:
             raise PipelineError("UNSUPPORTED_ELEMENT", a["element"])
     radii = [COVALENT_RADII_A[a["element"]] for a in atoms]
     adjacency = [[] for _ in atoms]
-    for i, j, img, _ in _close_pairs(structure, lambda i, j: radii[i] + radii[j] + tolerance,
-                                     2 * max(radii, default=0.0) + tolerance):
+    for i, j, img, _ in _close_pairs(
+        structure,
+        lambda i, j: radii[i] + radii[j] + tolerance,
+        2 * max(radii, default=0.0) + tolerance,
+    ):
         adjacency[i].append((j, img))
         if i != j:
             adjacency[j].append((i, tuple(-x for x in img)))
@@ -179,8 +299,11 @@ def deconstruct(structure: dict, bond_tolerance: float) -> dict:
     adjacency = bond_graph(structure, bond_tolerance)
     metal = {i for i, a in enumerate(atoms) if a["element"] in METALS}
     # Non-metal atoms bonded only to metals (mu-oxo) belong to the node.
-    oxo = {i for i in range(len(atoms)) if i not in metal and adjacency[i]
-           and all(j in metal for j, _ in adjacency[i])}
+    oxo = {
+        i
+        for i in range(len(atoms))
+        if i not in metal and adjacency[i] and all(j in metal for j, _ in adjacency[i])
+    }
     node_atoms = metal | oxo
     organic = set(range(len(atoms))) - node_atoms
     nodes = _components(node_atoms, adjacency)
@@ -196,28 +319,55 @@ def deconstruct(structure: dict, bond_tolerance: float) -> dict:
                 if j in node_atoms:
                     connectors.append(i)
                     node = nodes[node_of[j]]
-                    frame = tuple(img[k] + comp["offsets"][i][k] - node["offsets"][j][k] for k in range(3))
+                    frame = tuple(
+                        img[k] + comp["offsets"][i][k] - node["offsets"][j][k] for k in range(3)
+                    )
                     incidences.add((node_of[j], frame))
-        record = {"atoms": comp["atoms"], "offsets": comp["offsets"], "formula": formula_counts(elements),
-                  "connector_atoms": sorted(set(connectors)), "node_incidences": sorted(incidences),
-                  "infinite": comp["infinite"]}
+        record = {
+            "atoms": comp["atoms"],
+            "offsets": comp["offsets"],
+            "formula": formula_counts(elements),
+            "connector_atoms": sorted(set(connectors)),
+            "node_incidences": sorted(incidences),
+            "infinite": comp["infinite"],
+        }
         record["centroid_frac"] = _centroid(atoms, comp["atoms"], comp["offsets"])
         if record["connector_atoms"]:
-            record["connector_centroid_frac"] = _centroid(atoms, record["connector_atoms"], comp["offsets"])
+            record["connector_centroid_frac"] = _centroid(
+                atoms, record["connector_atoms"], comp["offsets"]
+            )
         (out_linkers if incidences else guests).append(record)
-    out_nodes = [{"atoms": n["atoms"], "offsets": n["offsets"], "infinite": n["infinite"],
-                  "centroid_frac": _centroid(atoms, n["atoms"], n["offsets"]),
-                  "formula": formula_counts(atoms[i]["element"] for i in n["atoms"])} for n in nodes]
+    out_nodes = [
+        {
+            "atoms": n["atoms"],
+            "offsets": n["offsets"],
+            "infinite": n["infinite"],
+            "centroid_frac": _centroid(atoms, n["atoms"], n["offsets"]),
+            "formula": formula_counts(atoms[i]["element"] for i in n["atoms"]),
+        }
+        for n in nodes
+    ]
     for n_id, node in enumerate(out_nodes):
-        node["incidences"] = sorted((l_id, frame) for l_id, l in enumerate(out_linkers)
-                                    for nid, frame in l["node_incidences"] if nid == n_id)
-    return {"nodes": out_nodes, "linkers": out_linkers, "guests": guests, "adjacency": adjacency,
-            "lattice": lattice}
+        node["incidences"] = sorted(
+            (l_id, frame)
+            for l_id, l in enumerate(out_linkers)
+            for nid, frame in l["node_incidences"]
+            if nid == n_id
+        )
+    return {
+        "nodes": out_nodes,
+        "linkers": out_linkers,
+        "guests": guests,
+        "adjacency": adjacency,
+        "lattice": lattice,
+    }
 
 
 # -- slot lattice -------------------------------------------------------------
 def _slot_key(linker) -> tuple:
-    return tuple(round(c, 3) % 1.0 for c in linker["centroid_frac"]) + (tuple(linker["formula"].items()),)
+    return tuple(round(c, 3) % 1.0 for c in linker["centroid_frac"]) + (
+        tuple(linker["formula"].items()),
+    )
 
 
 def _frac_close(f, g, tol=SLOT_MATCH_TOL) -> bool:
@@ -227,15 +377,22 @@ def _frac_close(f, g, tol=SLOT_MATCH_TOL) -> bool:
 def slot_permutations(slots: list, symmetry_operations: list, diag: list) -> list:
     """Slot permutations induced by parent-cell symmetry operations combined with supercell translations."""
     perms = set()
-    for (rot, trans) in symmetry_operations:
+    for rot, trans in symmetry_operations:
         for shift in itertools.product(*(range(n) for n in diag)):
             perm, ok = [], True
             for slot in slots:
                 p = tuple(slot["centroid_frac"][k] * diag[k] for k in range(3))
-                q = tuple(sum(rot[r][c] * p[c] for c in range(3)) + float(trans[r]) + shift[r] for r in range(3))
+                q = tuple(
+                    sum(rot[r][c] * p[c] for c in range(3)) + float(trans[r]) + shift[r]
+                    for r in range(3)
+                )
                 image = tuple(_wrap(q[k] / diag[k]) for k in range(3))
-                match = [s["slot_id"] for s in slots if s["slot_type"] == slot["slot_type"]
-                         and _frac_close(s["centroid_frac"], image)]
+                match = [
+                    s["slot_id"]
+                    for s in slots
+                    if s["slot_type"] == slot["slot_type"]
+                    and _frac_close(s["centroid_frac"], image)
+                ]
                 if len(match) != 1:
                     ok = False
                     break
@@ -267,37 +424,62 @@ def slot_graph(n_slots: int, contacts: dict) -> dict:
         for i, k in itertools.combinations(sorted(neigh[j]), 2):
             triplets.add(tuple(sorted((i, j, k))))
     pairs = sorted(adjacent)
-    return {"pairs_d1": pairs, "pair_weights_d1": [contacts[p] for p in pairs], "pairs_d2": sorted(d2),
-            "triplets": sorted(triplets)}
+    return {
+        "pairs_d1": pairs,
+        "pair_weights_d1": [contacts[p] for p in pairs],
+        "pairs_d2": sorted(d2),
+        "triplets": sorted(triplets),
+    }
 
 
 def species_for_formula(formula: dict, blocks: dict, role: str):
-    hits = [bid for bid, b in blocks.items() if b.get("role") == role and b.get("formula") == formula]
+    hits = [
+        bid for bid, b in blocks.items() if b.get("role") == role and b.get("formula") == formula
+    ]
     return hits[0] if len(hits) == 1 else None
 
 
-def build_slot_lattice(parent: dict, topology_id: str, supercell_matrix, chemistry: dict, blocks: dict,
-                       builder_protocol: dict) -> dict:
+def build_slot_lattice(
+    parent: dict,
+    topology_id: str,
+    supercell_matrix,
+    chemistry: dict,
+    blocks: dict,
+    builder_protocol: dict,
+) -> dict:
     """Parsed parent CIF -> checked slot lattice (TopologySpec fields) or a list of typed errors."""
     errors = []
 
     def fail(code, detail):
         errors.append({"code": code, "check": f"{topology_id}:{code.lower()}", "detail": detail})
 
-    struct = expand_supercell({"lattice": parent["lattice"], "atoms": parent["atoms"]}, supercell_matrix)
+    struct = expand_supercell(
+        {"lattice": parent["lattice"], "atoms": parent["atoms"]}, supercell_matrix
+    )
     parts = deconstruct(struct, builder_protocol["bond_tolerance_A"])
     if parts["guests"]:
         policy = chemistry.get("solvent_and_counterion_policy")
         if policy == "remove_unbound_guests":
             removed = {i for g in parts["guests"] for i in g["atoms"]}
-            struct = {**struct, "atoms": [a for i, a in enumerate(struct["atoms"]) if i not in removed]}
-            parts = {**deconstruct(struct, builder_protocol["bond_tolerance_A"]),
-                     "removed_guests": [g["formula"] for g in parts["guests"]]}
+            struct = {
+                **struct,
+                "atoms": [a for i, a in enumerate(struct["atoms"]) if i not in removed],
+            }
+            parts = {
+                **deconstruct(struct, builder_protocol["bond_tolerance_A"]),
+                "removed_guests": [g["formula"] for g in parts["guests"]],
+            }
         else:
-            fail("UNRESOLVED_GUEST_SPECIES", f"{[g['formula'] for g in parts['guests']]} under policy {policy!r}")
+            fail(
+                "UNRESOLVED_GUEST_SPECIES",
+                f"{[g['formula'] for g in parts['guests']]} under policy {policy!r}",
+            )
     for kind in ("nodes", "linkers"):
         if any(c["infinite"] for c in parts[kind]):
-            fail("PERIODIC_BUILDING_UNIT", f"a {kind[:-1]} component is connected to its own periodic image")
+            fail(
+                "PERIODIC_BUILDING_UNIT",
+                f"a {kind[:-1]} component is connected to its own periodic image",
+            )
     node_species = [species_for_formula(n["formula"], blocks, "node") for n in parts["nodes"]]
     linker_species = [species_for_formula(l["formula"], blocks, "linker") for l in parts["linkers"]]
     for formula, sp in zip([n["formula"] for n in parts["nodes"]], node_species):
@@ -313,22 +495,39 @@ def build_slot_lattice(parent: dict, topology_id: str, supercell_matrix, chemist
     for l, sp in zip(parts["linkers"], linker_species):
         block = blocks[sp]
         if len(l["connector_atoms"]) != block["n_connector_atoms"]:
-            fail("INVALID_CONNECTOR_COUNT", f"{sp}: {len(l['connector_atoms'])} != {block['n_connector_atoms']}")
+            fail(
+                "INVALID_CONNECTOR_COUNT",
+                f"{sp}: {len(l['connector_atoms'])} != {block['n_connector_atoms']}",
+            )
         if len(l["node_incidences"]) != block["connectivity"]:
-            fail("INVALID_CONNECTIVITY", f"{sp}: binds {len(l['node_incidences'])} nodes, declared {block['connectivity']}")
+            fail(
+                "INVALID_CONNECTIVITY",
+                f"{sp}: binds {len(l['node_incidences'])} nodes, declared {block['connectivity']}",
+            )
     for n, sp in zip(parts["nodes"], node_species):
         if len(n["incidences"]) != blocks[sp]["connectivity"]:
-            fail("INVALID_CONNECTIVITY", f"{sp}: {len(n['incidences'])} linker contacts, declared {blocks[sp]['connectivity']}")
+            fail(
+                "INVALID_CONNECTIVITY",
+                f"{sp}: {len(n['incidences'])} linker contacts, declared {blocks[sp]['connectivity']}",
+            )
 
     # Slots: one per linker, IDs stable under atom reordering (sorted by wrapped centroid, then formula).
     order = sorted(range(len(parts["linkers"])), key=lambda i: _slot_key(parts["linkers"][i]))
     slots = []
     for slot_id, li in enumerate(order):
         l = parts["linkers"][li]
-        slots.append({"slot_id": slot_id, "linker_index": li, "slot_type": blocks[linker_species[li]]["slot_type"],
-                      "parent_species": linker_species[li], "centroid_frac": l["centroid_frac"],
-                      "connector_centroid_frac": l["connector_centroid_frac"],
-                      "atoms": l["atoms"], "node_incidences": l["node_incidences"]})
+        slots.append(
+            {
+                "slot_id": slot_id,
+                "linker_index": li,
+                "slot_type": blocks[linker_species[li]]["slot_type"],
+                "parent_species": linker_species[li],
+                "centroid_frac": l["centroid_frac"],
+                "connector_centroid_frac": l["connector_centroid_frac"],
+                "atoms": l["atoms"],
+                "node_incidences": l["node_incidences"],
+            }
+        )
     slot_of = {s["linker_index"]: s["slot_id"] for s in slots}
     contacts = Counter()
     for n in parts["nodes"]:
@@ -350,7 +549,10 @@ def build_slot_lattice(parent: dict, topology_id: str, supercell_matrix, chemist
         for species, fraction in fractions.items():
             value = n * _fraction(fraction)
             if value.denominator != 1:
-                fail("NONINTEGRAL_COMPOSITION", f"{sublattice}:{species} = {n} x {fraction} = {value}")
+                fail(
+                    "NONINTEGRAL_COMPOSITION",
+                    f"{sublattice}:{species} = {n} x {fraction} = {value}",
+                )
             counts[species] = int(value)
         if sum(_fraction(f) for f in fractions.values()) != 1:
             fail("INVALID_COMPOSITION_SPEC", f"{sublattice} fractions do not sum to 1")
@@ -371,23 +573,39 @@ def build_slot_lattice(parent: dict, topology_id: str, supercell_matrix, chemist
     values = set(ratios.values())
     n_fu = values.pop() if len(values) == 1 else None
     if n_fu is None or n_fu.denominator != 1 or n_fu <= 0:
-        fail("INVENTORY_MISMATCH", f"cell inventory {dict(sorted(target.items()))} is not an integer multiple of "
-                                   f"target_elemental_inventory {per_fu}")
+        fail(
+            "INVENTORY_MISMATCH",
+            f"cell inventory {dict(sorted(target.items()))} is not an integer multiple of "
+            f"target_elemental_inventory {per_fu}",
+        )
     charge = sum(blocks[s]["formal_charge"] for s in node_species)
     charge += sum(blocks[s]["formal_charge"] * c for s, c in counts.items())
     expected_charge = chemistry["net_charge"] * (int(n_fu) if n_fu and n_fu.denominator == 1 else 0)
     if charge != expected_charge:
-        fail("CHARGE_IMBALANCE", f"supplied formal charges sum to {charge}, expected {expected_charge}")
+        fail(
+            "CHARGE_IMBALANCE",
+            f"supplied formal charges sum to {charge}, expected {expected_charge}",
+        )
     if errors:
         return {"errors": errors}
     assert n_fu is not None  # otherwise INVENTORY_MISMATCH returned above
     return {
-        "errors": [], "structure": struct, "slots": slots, "nodes": parts["nodes"], "node_species": node_species,
-        "parent_lattice": parent["lattice"], "symmetry_operations": parent["symmetry_operations"],
+        "errors": [],
+        "structure": struct,
+        "slots": slots,
+        "nodes": parts["nodes"],
+        "node_species": node_species,
+        "parent_lattice": parent["lattice"],
+        "symmetry_operations": parent["symmetry_operations"],
         "supercell_diagonal": struct["supercell_diagonal"],
-        "graph": graph, "permutations": perms, "species_counts": counts, "n_formula_units": int(n_fu),
-        "target_inventory": dict(sorted(target.items())), "parent_inventory": dict(sorted(parent_inventory.items())),
-        "removed_guests": parts.get("removed_guests", []), "net_charge_check": {"total": charge, "assumption": "SUPPLIED_NOT_INFERRED"},
+        "graph": graph,
+        "permutations": perms,
+        "species_counts": counts,
+        "n_formula_units": int(n_fu),
+        "target_inventory": dict(sorted(target.items())),
+        "parent_inventory": dict(sorted(parent_inventory.items())),
+        "removed_guests": parts.get("removed_guests", []),
+        "net_charge_check": {"total": charge, "assumption": "SUPPLIED_NOT_INFERRED"},
     }
 
 
@@ -406,8 +624,13 @@ def species_delta(blocks: dict, species: str) -> dict:
     sub = blocks[species].get("substitution")
     if not sub:
         return {}
-    new, parent = Counter(blocks[species]["formula"]), Counter(blocks[sub["parent_block"]]["formula"])
-    return {el: new[el] - parent[el] for el in sorted(set(new) | set(parent)) if new[el] != parent[el]}
+    new, parent = (
+        Counter(blocks[species]["formula"]),
+        Counter(blocks[sub["parent_block"]]["formula"]),
+    )
+    return {
+        el: new[el] - parent[el] for el in sorted(set(new) | set(parent)) if new[el] != parent[el]
+    }
 
 
 # -- builder ------------------------------------------------------------------
@@ -415,7 +638,9 @@ def geometry_hashes(lattice, elements, fracs) -> tuple[str, str]:
     """(ordered hash in builder order, order-independent canonical hash)."""
     rows = [(e, tuple(round(_wrap(x), 5) % 1.0 for x in f)) for e, f in zip(elements, fracs)]
     lat = [[round(x, 5) for x in v] for v in lattice]
-    return content_hash({"lattice": lat, "atoms": rows}), content_hash({"lattice": lat, "atoms": sorted(rows)})
+    return content_hash({"lattice": lat, "atoms": rows}), content_hash(
+        {"lattice": lat, "atoms": sorted(rows)}
+    )
 
 
 class BuildFailure(Exception):
@@ -431,6 +656,7 @@ class ParentSubstitutionBuilder:
     atom is the first ``replace_element`` atom of the linker in Cartesian order relative to the linker
     centroid (rounded to 1e-3 angstrom). Orientation states are not yet search variables (T01.4).
     """
+
     name = "parent_substitution_v1"
 
     def __init__(self, lattice_info: dict, blocks: dict, protocol: dict):
@@ -443,13 +669,21 @@ class ParentSubstitutionBuilder:
             raise BuildFailure("NO_CONSTRUCTION_RULE", f"{slot['parent_species']} -> {species}")
         lattice, atoms = struct["lattice"], struct["atoms"]
         linker = self.lattice_info["linkers_by_slot"][slot["slot_id"]]
-        pos = {i: frac_to_cart(lattice, tuple(atoms[i]["frac"][k] + linker["offsets"][i][k] for k in range(3)))
-               for i in slot["atoms"]}
+        pos = {
+            i: frac_to_cart(
+                lattice, tuple(atoms[i]["frac"][k] + linker["offsets"][i][k] for k in range(3))
+            )
+            for i in slot["atoms"]
+        }
         centre = tuple(sum(p[k] for p in pos.values()) / len(pos) for k in range(3))
-        targets = sorted((i for i in slot["atoms"] if atoms[i]["element"] == sub["replace_element"]),
-                         key=lambda i: tuple(round(x, 3) for x in _sub(pos[i], centre)))
+        targets = sorted(
+            (i for i in slot["atoms"] if atoms[i]["element"] == sub["replace_element"]),
+            key=lambda i: tuple(round(x, 3) for x in _sub(pos[i], centre)),
+        )
         if not targets:
-            raise BuildFailure("NO_SUBSTITUTION_SITE", f"slot {slot['slot_id']} has no {sub['replace_element']}")
+            raise BuildFailure(
+                "NO_SUBSTITUTION_SITE", f"slot {slot['slot_id']} has no {sub['replace_element']}"
+            )
         h = targets[0]
         anchors = [j for j, _ in self.lattice_info["adjacency"][h] if j in pos]
         if len(anchors) != 1:
@@ -459,7 +693,9 @@ class ParentSubstitutionBuilder:
         u = tuple(x / _norm(u) for x in u)
         ends = sorted(pos[i] for i in linker["connector_atoms"])
         if len(ends) < 2:
-            raise BuildFailure("DEGENERATE_SUBSTITUTION_FRAME", f"slot {slot['slot_id']} has < 2 connector atoms")
+            raise BuildFailure(
+                "DEGENERATE_SUBSTITUTION_FRAME", f"slot {slot['slot_id']} has < 2 connector atoms"
+            )
         axis = _sub(ends[-1], ends[0])
         proj = sum(a * b for a, b in zip(axis, u))
         v = tuple(a - proj * b for a, b in zip(axis, u))
@@ -471,8 +707,14 @@ class ParentSubstitutionBuilder:
         for g in sub["group"]:
             a, b, c = g["frame_A"]
             r = tuple(anchor[k] + a * u[k] + b * v[k] + c * w[k] for k in range(3))
-            new_atoms.append({"element": g["element"], "frac": tuple(_wrap(x) for x in _cart_to_frac(lattice, r)),
-                              "slot": slot["slot_id"], "block": species})
+            new_atoms.append(
+                {
+                    "element": g["element"],
+                    "frac": tuple(_wrap(x) for x in _cart_to_frac(lattice, r)),
+                    "slot": slot["slot_id"],
+                    "block": species,
+                }
+            )
         return h, new_atoms
 
     def build(self, topology_id: str, species_by_slot: list) -> dict:
@@ -502,7 +744,9 @@ class ParentSubstitutionBuilder:
         """Early sanity checks: overlaps, inventory and slot/node connectivity against the parent."""
         dmin = min_interatomic_distance(geometry, self.protocol["min_interatomic_distance_A"])
         if dmin < self.protocol["min_interatomic_distance_A"]:
-            raise BuildFailure("ATOM_OVERLAP", f"{dmin:.3f} A < {self.protocol['min_interatomic_distance_A']} A")
+            raise BuildFailure(
+                "ATOM_OVERLAP", f"{dmin:.3f} A < {self.protocol['min_interatomic_distance_A']} A"
+            )
         expected = Counter(self.lattice_info["structure_inventory"])
         for slot, species in zip(self.lattice_info["slots"], species_by_slot):
             if species != slot["parent_species"]:
@@ -511,8 +755,12 @@ class ParentSubstitutionBuilder:
         inventory = Counter(a["element"] for a in geometry["atoms"])
         if +inventory != +expected:
             raise BuildFailure("INVENTORY_MISMATCH", f"{dict(inventory)} != {dict(expected)}")
-        mapping = map_to_parent_slots(geometry, self.lattice_info, self.protocol["bond_tolerance_A"],
-                                      self.protocol["slot_match_tolerance_A"])
+        mapping = map_to_parent_slots(
+            geometry,
+            self.lattice_info,
+            self.protocol["bond_tolerance_A"],
+            self.protocol["slot_match_tolerance_A"],
+        )
         if not mapping["retained"]:
             raise BuildFailure("CONNECTIVITY_CHANGED", mapping["reason"])
         return geometry
@@ -520,7 +768,9 @@ class ParentSubstitutionBuilder:
 
 def _min_image_distance(lattice, f, g) -> float:
     d = tuple((f[k] - g[k]) - round(f[k] - g[k]) for k in range(3))
-    return min(_norm(frac_to_cart(lattice, tuple(d[k] + img[k] for k in range(3)))) for img in _IMAGES)
+    return min(
+        _norm(frac_to_cart(lattice, tuple(d[k] + img[k] for k in range(3)))) for img in _IMAGES
+    )
 
 
 def _match(lattice, found: list, reference: list, tol: float):
@@ -534,24 +784,41 @@ def _match(lattice, found: list, reference: list, tol: float):
     return out if sorted(out) == list(range(len(reference))) else None
 
 
-def map_to_parent_slots(geometry: dict, info: dict, bond_tolerance: float, tolerance_A: float) -> dict:
+def map_to_parent_slots(
+    geometry: dict, info: dict, bond_tolerance: float, tolerance_A: float
+) -> dict:
     """Reference-slot mapping of a built or relaxed geometry; reports whether slot/node topology is retained."""
     parts = deconstruct(geometry, bond_tolerance)
     if parts["guests"] or any(c["infinite"] for c in parts["nodes"] + parts["linkers"]):
         return {"retained": False, "reason": "DISCONNECTED_OR_PERIODIC_UNIT"}
     if len(parts["linkers"]) != len(info["slots"]) or len(parts["nodes"]) != len(info["nodes"]):
-        return {"retained": False, "reason": f"UNIT_COUNT_CHANGED: {len(parts['linkers'])} linkers, {len(parts['nodes'])} nodes"}
+        return {
+            "retained": False,
+            "reason": f"UNIT_COUNT_CHANGED: {len(parts['linkers'])} linkers, {len(parts['nodes'])} nodes",
+        }
     lattice = geometry["lattice"]
-    slot_of = _match(lattice, [l.get("connector_centroid_frac") for l in parts["linkers"]],
-                     [s["connector_centroid_frac"] for s in info["slots"]], tolerance_A)
-    node_of = _match(lattice, [n["centroid_frac"] for n in parts["nodes"]],
-                     [n["centroid_frac"] for n in info["nodes"]], tolerance_A)
+    slot_of = _match(
+        lattice,
+        [l.get("connector_centroid_frac") for l in parts["linkers"]],
+        [s["connector_centroid_frac"] for s in info["slots"]],
+        tolerance_A,
+    )
+    node_of = _match(
+        lattice,
+        [n["centroid_frac"] for n in parts["nodes"]],
+        [n["centroid_frac"] for n in info["nodes"]],
+        tolerance_A,
+    )
     if slot_of is None or node_of is None:
         return {"retained": False, "reason": "SLOT_MAPPING_FAILED"}
-    found = sorted((slot_of[i], tuple(sorted(Counter(node_of[n] for n, _ in l["node_incidences"]).items())))
-                   for i, l in enumerate(parts["linkers"]))
-    reference = sorted((s["slot_id"], tuple(sorted(Counter(n for n, _ in s["node_incidences"]).items())))
-                       for s in info["slots"])
+    found = sorted(
+        (slot_of[i], tuple(sorted(Counter(node_of[n] for n, _ in l["node_incidences"]).items())))
+        for i, l in enumerate(parts["linkers"])
+    )
+    reference = sorted(
+        (s["slot_id"], tuple(sorted(Counter(n for n, _ in s["node_incidences"]).items())))
+        for s in info["slots"]
+    )
     if found != reference:
         return {"retained": False, "reason": "SLOT_NODE_INCIDENCES_CHANGED"}
     return {"retained": True, "reason": None, "linker_to_slot": slot_of}
@@ -563,20 +830,26 @@ class PormakeBuilder:
     The installed API and block database must be verified before use; until then every request is a
     BuildFailure that names the missing verification, never a fabricated geometry.
     """
+
     name = "pormake"
 
     def __init__(self, *_args, **_kwargs):
         self.available = importlib.util.find_spec("pormake") is not None
 
     def build(self, topology_id: str, species_by_slot: list) -> dict:
-        #TODO: Task 01 — per-decoration PORMAKE assembly (an edge block per slot). PORMAKE already builds the parent
-        #TODO: frameworks (protocols.topology_generation, topology_builders.py); decorations use parent_substitution_v1.
+        # TODO: Task 01 — per-decoration PORMAKE assembly (an edge block per slot). PORMAKE already builds the parent
+        # TODO: frameworks (protocols.topology_generation, topology_builders.py); decorations use parent_substitution_v1.
         if not self.available:
             raise BuildFailure("BUILDER_UNAVAILABLE", "pormake is not installed")
-        raise BuildFailure("BUILDER_NOT_VERIFIED", "pormake API/block database not verified for this project")
+        raise BuildFailure(
+            "BUILDER_NOT_VERIFIED", "pormake API/block database not verified for this project"
+        )
 
 
-BUILDERS = {ParentSubstitutionBuilder.name: ParentSubstitutionBuilder, PormakeBuilder.name: PormakeBuilder}
+BUILDERS = {
+    ParentSubstitutionBuilder.name: ParentSubstitutionBuilder,
+    PormakeBuilder.name: PormakeBuilder,
+}
 
 
 def lattice_info_for_builder(lattice: dict, protocol: dict) -> dict:
@@ -584,8 +857,12 @@ def lattice_info_for_builder(lattice: dict, protocol: dict) -> dict:
     by_slot = {}
     for slot in lattice["slots"]:
         by_slot[slot["slot_id"]] = parts["linkers"][slot["linker_index"]]
-    return {**lattice, "linkers_by_slot": by_slot, "adjacency": parts["adjacency"],
-            "structure_inventory": Counter(a["element"] for a in lattice["structure"]["atoms"])}
+    return {
+        **lattice,
+        "linkers_by_slot": by_slot,
+        "adjacency": parts["adjacency"],
+        "structure_inventory": Counter(a["element"] for a in lattice["structure"]["atoms"]),
+    }
 
 
 def build_framework(spec, topology, decoration: dict) -> dict:
@@ -593,29 +870,59 @@ def build_framework(spec, topology, decoration: dict) -> dict:
     physical = spec.physical
     protocol = physical["protocols"]["builder"]
     builder_cls = BUILDERS.get(protocol["builder_id"])
-    common = {"topology_id": topology.topology_id, "decoration_id": decoration["configuration_id"],
-              "orbit_id": decoration["orbit_id"], "builder": protocol["builder_id"],
-              "builder_protocol_hash": content_hash(protocol)}
+    common = {
+        "topology_id": topology.topology_id,
+        "decoration_id": decoration["configuration_id"],
+        "orbit_id": decoration["orbit_id"],
+        "builder": protocol["builder_id"],
+        "builder_protocol_hash": content_hash(protocol),
+    }
     if builder_cls is None:
-        return make_record("BuildFailure", spec.provenance, **common, status=StageStatus.UNSUPPORTED.value,
-                           failure={"code": "UNKNOWN_BUILDER", "detail": protocol["builder_id"]})
+        return make_record(
+            "BuildFailure",
+            spec.provenance,
+            **common,
+            status=StageStatus.UNSUPPORTED.value,
+            failure={"code": "UNKNOWN_BUILDER", "detail": protocol["builder_id"]},
+        )
     info = physical["builder_info"][topology.topology_id]
     try:
-        geometry = builder_cls(info, physical["blocks"], protocol).build(topology.topology_id, decoration["species_by_slot"])
+        geometry = builder_cls(info, physical["blocks"], protocol).build(
+            topology.topology_id, decoration["species_by_slot"]
+        )
     except BuildFailure as exc:
-        return make_record("BuildFailure", spec.provenance, **common, status=StageStatus.FAILED.value,
-                           failure={"code": exc.code, "detail": exc.detail})
+        return make_record(
+            "BuildFailure",
+            spec.provenance,
+            **common,
+            status=StageStatus.FAILED.value,
+            failure={"code": exc.code, "detail": exc.detail},
+        )
     elements = [a["element"] for a in geometry["atoms"]]
     fracs = [tuple(round(x, 6) for x in a["frac"]) for a in geometry["atoms"]]
     ordered, canonical = geometry_hashes(geometry["lattice"], elements, fracs)
     return make_record(
-        "Geometry", spec.provenance, **common, status=StageStatus.COMPLETED.value,
-        lattice_A=[list(v) for v in geometry["lattice"]], elements=elements, frac_coords=[list(f) for f in fracs],
+        "Geometry",
+        spec.provenance,
+        **common,
+        status=StageStatus.COMPLETED.value,
+        lattice_A=[list(v) for v in geometry["lattice"]],
+        elements=elements,
+        frac_coords=[list(f) for f in fracs],
         atom_map=[{"block": a["block"], "slot": a["slot"]} for a in geometry["atoms"]],
-        periodic_adjacency={"slot_pairs_distance_1": [list(p) for p in topology.pairs_d1],
-                            "slot_node_incidences": {str(s["slot_id"]): len(s["node_incidences"]) for s in info["slots"]}},
-        inventory=formula_counts(elements), geometry_hash=ordered, canonical_geometry_hash=canonical,
+        periodic_adjacency={
+            "slot_pairs_distance_1": [list(p) for p in topology.pairs_d1],
+            "slot_node_incidences": {
+                str(s["slot_id"]): len(s["node_incidences"]) for s in info["slots"]
+            },
+        },
+        inventory=formula_counts(elements),
+        geometry_hash=ordered,
+        canonical_geometry_hash=canonical,
         orientation_convention="first replace_element atom in Cartesian order about the linker centroid",
-        cif=write_cif(decoration["configuration_id"].replace(":", "_"), geometry["lattice"], elements, fracs),
-        relaxation_protocol=None, validation_status="BUILDER_SANITY_PASSED",
+        cif=write_cif(
+            decoration["configuration_id"].replace(":", "_"), geometry["lattice"], elements, fracs
+        ),
+        relaxation_protocol=None,
+        validation_status="BUILDER_SANITY_PASSED",
     )

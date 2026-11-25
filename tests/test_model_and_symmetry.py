@@ -1,4 +1,5 @@
 """Tasks 01/03: symmetry quotient, grouped splits, feature invariance and deterministic model selection."""
+
 import json
 from fractions import Fraction
 
@@ -29,15 +30,23 @@ def test_decoration_space_and_orbit_quotient(spec, tid):
 
 @pytest.mark.parametrize("tid", ["ring12", "prism6"])
 def test_split_partitions_orbits_without_leakage(spec, tid):
-    spaces = {t: structures.define_decoration_space(spec, spec.topologies[t]) for t in spec.topologies}
+    spaces = {
+        t: structures.define_decoration_space(spec, spec.topologies[t]) for t in spec.topologies
+    }
     split = datasets.freeze_split(spec, spaces)
-    assert split["counts"][tid] == EXPECTED["core_pairwise"]["topologies"][tid]["split_orbit_counts"]
+    assert (
+        split["counts"][tid] == EXPECTED["core_pairwise"]["topologies"][tid]["split_orbit_counts"]
+    )
     g = split["per_topology"][tid]
-    assert not (set(g["training"]) & set(g["development"])) and not (set(g["holdout"]) & set(g["training"] + g["development"]))
+    assert not (set(g["training"]) & set(g["development"])) and not (
+        set(g["holdout"]) & set(g["training"] + g["development"])
+    )
 
 
 def test_split_with_leak_rejected(spec):
-    spaces = {t: structures.define_decoration_space(spec, spec.topologies[t]) for t in spec.topologies}
+    spaces = {
+        t: structures.define_decoration_space(spec, spec.topologies[t]) for t in spec.topologies
+    }
     leaky = json.loads(json.dumps(spec.split_manifest))
     leaky["ring12"]["development"].append(leaky["ring12"]["training"][0])
     object.__setattr__(spec, "split_manifest", leaky)
@@ -76,10 +85,16 @@ def test_model_selection_and_untouched_holdout(case):
         sel = cm.fit_and_select(spec, topo, train, dev)
         assert sel["selected_model"] == EXPECTED[case]["expected_selected_model"]
         ham = cm.hamiltonian_from_selection(spec, topo, sel)
-        errors = [cm.predict(ham, topo, r["bits"]) - Fraction(repr(r["energy_eV"])) for r in holdout if r["topology_id"] == tid]
+        errors = [
+            cm.predict(ham, topo, r["bits"]) - Fraction(repr(r["energy_eV"]))
+            for r in holdout
+            if r["topology_id"] == tid
+        ]
         assert errors and cm.rmse(errors) <= 1e-10
         # The constant (graph offset) is retained in the Hamiltonian.
-        assert ham["reference_offset_eV"] == pytest.approx({"ring12": 0.12, "prism6": 0.2}[tid], abs=1e-12)
+        assert ham["reference_offset_eV"] == pytest.approx(
+            {"ring12": 0.12, "prism6": 0.2}[tid], abs=1e-12
+        )
 
 
 def test_rank_deficient_candidates_recorded_as_failed(spec):
@@ -88,7 +103,11 @@ def test_rank_deficient_candidates_recorded_as_failed(spec):
     dev = datasets.ingest_labels(spec, spec.development_rows, "development", "d")
     sel = cm.fit_and_select(spec, spec.topologies["ring12"], train, dev)
     failures = {c["model_id"]: c.get("failure", {}).get("code") for c in sel["candidates"]}
-    assert failures["M1_two_shell_pairs"] == failures["M2_pairs_and_triplets"] == "RANK_DEFICIENT_FEATURES"
+    assert (
+        failures["M1_two_shell_pairs"]
+        == failures["M2_pairs_and_triplets"]
+        == "RANK_DEFICIENT_FEATURES"
+    )
     assert sel["status"] == "MODEL_INADEQUATE"
 
 
@@ -104,12 +123,16 @@ def _with_models(tmp_path, keep):
 def test_selection_is_policy_driven_not_hardcoded(tmp_path):
     spec = load_project(_with_models(tmp_path, {"M0_nearest_pairs", "M2_pairs_and_triplets"}))
     report = run_pipeline(spec, tmp_path / "run")
-    assert {s["model_selection"]["selected_model"] for s in report["topologies"].values()} == {"M2_pairs_and_triplets"}
+    assert {s["model_selection"]["selected_model"] for s in report["topologies"].values()} == {
+        "M2_pairs_and_triplets"
+    }
     assert report["winning_topology"] == "prism6"
 
 
 def test_inadequate_family_halts_with_model_inadequate(tmp_path):
-    spec = load_project(_with_models(tmp_path, {"M0_nearest_pairs", "M1_two_shell_pairs"}), case="higher_order")
+    spec = load_project(
+        _with_models(tmp_path, {"M0_nearest_pairs", "M1_two_shell_pairs"}), case="higher_order"
+    )
     report = run_pipeline(spec, tmp_path / "run")
     assert report["stage_status"]["model_selection"] == "FAILED"
     assert report["stage_status"]["encoding"] == "NOT_RUN"

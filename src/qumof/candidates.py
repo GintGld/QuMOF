@@ -3,6 +3,7 @@
 Orbit key: ``topology_id:lexicographically_smallest_symmetry_image``; no A/B
 label exchange. Deduplication runs separately within each graph.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -16,7 +17,7 @@ from .structures import canonical_bits
 def deduplicate_candidates(spec, topo, solver_result: dict) -> dict:
     """deduplicate_candidates(candidate_ids, symmetry_policy_id) -> CandidateSet."""
     # Relaxed-geometry equivalence (T05.1) is separate: geometry_match.py, applied to evaluated physical candidates.
-    #TODO: Task 05 — canonicalisation under non-diagonal supercell translations (only diagonal supercells exist).
+    # TODO: Task 05 — canonicalisation under non-diagonal supercell translations (only diagonal supercells exist).
     orbits = defaultdict(list)
     for bits, energy in table_from_result(solver_result):
         orbits[bit_string(canonical_bits(topo, bits))].append((bits, energy))
@@ -29,21 +30,36 @@ def deduplicate_candidates(spec, topo, solver_result: dict) -> dict:
         if representative != image:
             raise PipelineError("NONCANONICAL_REPRESENTATIVE", image)
         energy = energies.pop()
-        rows.append({"candidate_id": f"{topo.topology_id}:{image}", "orbit_id": f"{topo.topology_id}:{image}",
-                     "topology_id": topo.topology_id, "bits": [int(c) for c in image], "multiplicity": len(members),
-                     "member_bitstrings": sorted(bit_string(b) for b, _ in members),
-                     "predicted_base_energy_eV": float(energy), "predicted_base_energy_exact": str(energy)})
+        rows.append(
+            {
+                "candidate_id": f"{topo.topology_id}:{image}",
+                "orbit_id": f"{topo.topology_id}:{image}",
+                "topology_id": topo.topology_id,
+                "bits": [int(c) for c in image],
+                "multiplicity": len(members),
+                "member_bitstrings": sorted(bit_string(b) for b, _ in members),
+                "predicted_base_energy_eV": float(energy),
+                "predicted_base_energy_exact": str(energy),
+            }
+        )
     rows.sort(key=lambda r: (Fraction(r["predicted_base_energy_exact"]), r["orbit_id"]))
-    return make_record("CandidateSet", spec.provenance, topology_id=topo.topology_id,
-                       solver_result_id=solver_result["artifact_id"], hamiltonian_id=solver_result["hamiltonian_id"],
-                       symmetry_policy=spec.config["deduplication"], n_raw_states=solver_result["n_feasible"],
-                       n_unique_orbits=len(rows), candidates=rows)
+    return make_record(
+        "CandidateSet",
+        spec.provenance,
+        topology_id=topo.topology_id,
+        solver_result_id=solver_result["artifact_id"],
+        hamiltonian_id=solver_result["hamiltonian_id"],
+        symmetry_policy=spec.config["deduplication"],
+        n_raw_states=solver_result["n_feasible"],
+        n_unique_orbits=len(rows),
+        candidates=rows,
+    )
 
 
 def select_pool(spec, candidate_set: dict) -> dict:
     """Best k unique orbits per graph, keeping every tie at the cutoff."""
     # The finalist pool is the surrogate top-k (exploitation); training acquisition uses acquisition.py (T05.2).
-    #TODO: Task 05 — an evaluation budget across topologies for the finalist pool itself.
+    # TODO: Task 05 — an evaluation budget across topologies for the finalist pool itself.
     k = spec.config["candidate_pool"]["top_k_unique_orbits_per_topology"]
     rows = candidate_set["candidates"]
     energies = [Fraction(r["predicted_base_energy_exact"]) for r in rows]
@@ -55,11 +71,34 @@ def select_pool(spec, candidate_set: dict) -> dict:
             break
         n_deg = energies.count(energy)
         reason = "rank_within_top_k" if rank <= k else "tie_at_cutoff"
-        pool.append({**{key: row[key] for key in ("candidate_id", "orbit_id", "topology_id", "bits", "multiplicity",
-                                                  "predicted_base_energy_eV", "predicted_base_energy_exact")},
-                     "surrogate_rank": rank, "degeneracy_group": groups[energy], "n_degenerate_orbits": n_deg,
-                     "selection_reason": reason})
-    return make_record("CandidatePool", spec.provenance, topology_id=candidate_set["topology_id"],
-                       candidate_set_id=candidate_set["artifact_id"], hamiltonian_id=candidate_set["hamiltonian_id"],
-                       policy={"top_k": k, "retain_all_score_ties": True, "score": "surrogate base energy"},
-                       cutoff_energy_exact=str(cutoff), n_selected=len(pool), pool=pool)
+        pool.append(
+            {
+                **{
+                    key: row[key]
+                    for key in (
+                        "candidate_id",
+                        "orbit_id",
+                        "topology_id",
+                        "bits",
+                        "multiplicity",
+                        "predicted_base_energy_eV",
+                        "predicted_base_energy_exact",
+                    )
+                },
+                "surrogate_rank": rank,
+                "degeneracy_group": groups[energy],
+                "n_degenerate_orbits": n_deg,
+                "selection_reason": reason,
+            }
+        )
+    return make_record(
+        "CandidatePool",
+        spec.provenance,
+        topology_id=candidate_set["topology_id"],
+        candidate_set_id=candidate_set["artifact_id"],
+        hamiltonian_id=candidate_set["hamiltonian_id"],
+        policy={"top_k": k, "retain_all_score_ties": True, "score": "surrogate base energy"},
+        cutoff_energy_exact=str(cutoff),
+        n_selected=len(pool),
+        pool=pool,
+    )

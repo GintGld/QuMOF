@@ -6,6 +6,7 @@ count constraints (one per substituted sublattice). A cubic surrogate is never l
 target rejects it unless the encoding policy asks for explicit quadratization (Rosenberg substitution with
 recorded ancillas and a stated penalty bound). ``compile_one_hot`` encodes slots with more than two species.
 """
+
 from __future__ import annotations
 from collections.abc import Iterable
 
@@ -75,7 +76,13 @@ def count_penalty(constraints: list, weight) -> dict:
 
 def single_flip_bound(poly: dict, variables) -> Fraction:
     """max_i sum_{terms containing i} |c|: no single bit flip changes the polynomial by more than this."""
-    return max((sum((abs(Fraction(c)) for key, c in poly.items() if i in key), Fraction(0)) for i in variables), default=Fraction(0))
+    return max(
+        (
+            sum((abs(Fraction(c)) for key, c in poly.items() if i in key), Fraction(0))
+            for i in variables
+        ),
+        default=Fraction(0),
+    )
 
 
 def quadratize(poly: dict, n: int) -> tuple[dict, list]:
@@ -86,7 +93,9 @@ def quadratize(poly: dict, n: int) -> tuple[dict, list]:
     so with M_y = 2 * sum_{terms using y} |c| (> sum |c|) the minimum over y reproduces the cubic polynomial.
     """
     if degree(poly) > 3:
-        raise PipelineError("UNSUPPORTED_ENCODING_FORMAT", "quadratization implemented for degree <= 3")
+        raise PipelineError(
+            "UNSUPPORTED_ENCODING_FORMAT", "quadratization implemented for degree <= 3"
+        )
     out, ancilla_of = {}, {}
     for key, c in sorted(poly.items()):
         if len(key) <= 2:
@@ -99,51 +108,86 @@ def quadratize(poly: dict, n: int) -> tuple[dict, list]:
     for (i, j), y in sorted(ancilla_of.items(), key=lambda kv: kv[1]):
         m = 2 * sum(abs(c) for key, c in out.items() if y in key)
         out = poly_add(out, {(i, j): m, (i, y): -2 * m, (j, y): -2 * m, (y,): 3 * m})
-        ancillas.append({"index": y, "product_of": [i, j], "penalty_M_exact": str(m), "penalty_M_eV": float(m),
-                         "rule": "M = 2 * sum |c| of substituted terms using this ancilla"})
+        ancillas.append(
+            {
+                "index": y,
+                "product_of": [i, j],
+                "penalty_M_exact": str(m),
+                "penalty_M_eV": float(m),
+                "rule": "M = 2 * sum |c| of substituted terms using this ancilla",
+            }
+        )
     return out, ancillas
 
 
-def compile_encoding(spec, topo, hamiltonian: dict, target: str, quadratize_higher_order: bool = False) -> dict:
+def compile_encoding(
+    spec, topo, hamiltonian: dict, target: str, quadratize_higher_order: bool = False
+) -> dict:
     """compile_encoding(hamiltonian_id, decoration_space_id, encoding_policy_id) -> EncodingArtifact."""
     physical = physical_polynomial(hamiltonian, topo)
     if target == "QUBO" and degree(physical) > 2 and not quadratize_higher_order:
-        raise PipelineError(QUADRATIZATION_REQUIRED,
-                            f"{hamiltonian['model_id']} has {sum(len(k) > 2 for k in physical)} terms of degree > 2")
+        raise PipelineError(
+            QUADRATIZATION_REQUIRED,
+            f"{hamiltonian['model_id']} has {sum(len(k) > 2 for k in physical)} terms of degree > 2",
+        )
     if target not in ("QUBO", "HUBO"):
         raise PipelineError("UNSUPPORTED_ENCODING_FORMAT", target)
     weight = Fraction(repr(spec.config["qubo"]["ratio_penalty_eV"]))
     n = topo.n_sites
     constraints = count_constraints(spec, topo)
     penalty = count_penalty(constraints, weight)
-    body, ancillas = (quadratize(physical, n) if target == "QUBO" and degree(physical) > 2 else (physical, []))
+    body, ancillas = (
+        quadratize(physical, n) if target == "QUBO" and degree(physical) > 2 else (physical, [])
+    )
     objective = poly_add(body, penalty)
     n_vars = n + len(ancillas)
     linear = [objective.get((i,), Fraction(0)) for i in range(n_vars)]
-    quadratic = [{"i": k[0], "j": k[1], "value": float(v), "exact": str(v)}
-                 for k, v in sorted(objective.items()) if len(k) == 2]
-    higher = [{"sites": list(k), "value": float(v), "exact": str(v)}
-              for k, v in sorted(objective.items()) if len(k) > 2]
+    quadratic = [
+        {"i": k[0], "j": k[1], "value": float(v), "exact": str(v)}
+        for k, v in sorted(objective.items())
+        if len(k) == 2
+    ]
+    higher = [
+        {"sites": list(k), "value": float(v), "exact": str(v)}
+        for k, v in sorted(objective.items())
+        if len(k) > 2
+    ]
     const = objective.get((), Fraction(0))
     # Auditable sufficiency: if lambda > max single-flip change of the physical polynomial, every state with a
     # count violation d >= 1 lies above the feasible state reached by d flips (lambda d^2 >= lambda d > d L).
     bound = single_flip_bound(physical, range(n))
     k_text = "; ".join(f"sum over {len(sites)} sites = {k}" for sites, k in constraints)
     return make_record(
-        "EncodingArtifact", spec.provenance, target=target, format="upper_triangle_once",
-        topology_id=topo.topology_id, physical_hamiltonian_id=hamiltonian["artifact_id"],
+        "EncodingArtifact",
+        spec.provenance,
+        target=target,
+        format="upper_triangle_once",
+        topology_id=topo.topology_id,
+        physical_hamiltonian_id=hamiltonian["artifact_id"],
         objective="physical_energy + lambda * sum_c (sum_{i in c} bits_i - k_c)^2",
         count_constraints=[{"sites": list(sites), "k": k} for sites, k in constraints],
-        constant_eV=float(const), constant_exact=str(const),
-        linear_eV=[float(v) for v in linear], linear_exact=[str(v) for v in linear],
-        quadratic_eV=quadratic, higher_order_terms=higher, max_degree=degree(objective),
-        penalty_eV=float(weight), penalty_exact=str(weight), penalty_constant_exact=str(penalty.get((), 0)),
-        penalty_bound={"single_flip_bound_eV": float(bound), "single_flip_bound_exact": str(bound),
-                       "certified_by_bound": weight > bound,
-                       "rule": "lambda > max_i sum_{terms containing i} |c| guarantees a feasible penalised minimum"},
-        physical_offset_eV=float(physical.get((), 0)), physical_offset_exact=str(physical.get((), 0)),
+        constant_eV=float(const),
+        constant_exact=str(const),
+        linear_eV=[float(v) for v in linear],
+        linear_exact=[str(v) for v in linear],
+        quadratic_eV=quadratic,
+        higher_order_terms=higher,
+        max_degree=degree(objective),
+        penalty_eV=float(weight),
+        penalty_exact=str(weight),
+        penalty_constant_exact=str(penalty.get((), 0)),
+        penalty_bound={
+            "single_flip_bound_eV": float(bound),
+            "single_flip_bound_exact": str(bound),
+            "certified_by_bound": weight > bound,
+            "rule": "lambda > max_i sum_{terms containing i} |c| guarantees a feasible penalised minimum",
+        },
+        physical_offset_eV=float(physical.get((), 0)),
+        physical_offset_exact=str(physical.get((), 0)),
         bit_order="bits[i] is site i; string leftmost character is site 0; ancillas follow the sites",
-        variable_to_slot={str(i): i for i in range(n)}, n_variables=n_vars, ancillas=ancillas,
+        variable_to_slot={str(i): i for i in range(n)},
+        n_variables=n_vars,
+        ancillas=ancillas,
         decode_rule=f"bit 1 -> species with encoding 1; drop ancillas; reject unless {k_text}",
     )
 
@@ -179,7 +223,10 @@ def evaluate_encoding(encoding: dict, bits) -> Fraction:
 
 def _ancilla_coefficients(encoding: dict) -> dict:
     """For each ancilla y: (linear coefficient, {original variable: coefficient of y * x_v})."""
-    out = {a["index"]: [Fraction(encoding["linear_exact"][a["index"]]), {}] for a in encoding.get("ancillas", [])}
+    out = {
+        a["index"]: [Fraction(encoding["linear_exact"][a["index"]]), {}]
+        for a in encoding.get("ancillas", [])
+    }
     for q in encoding["quadratic_eV"]:
         for y, v in ((q["j"], q["i"]), (q["i"], q["j"])):
             if y in out and v not in out:
@@ -192,8 +239,11 @@ def verify_encoding(spec, topo, hamiltonian: dict, encoding: dict) -> dict:
     the penalised minimum must be feasible."""
     evaluate = _IntPoly(encoding)
     weight = Fraction(encoding["penalty_exact"])
-    constraints = [(c["sites"], c["k"]) for c in encoding.get("count_constraints") or
-                   [{"sites": list(range(topo.n_sites)), "k": n_ones_of(spec, topo)}]]
+    constraints = [
+        (c["sites"], c["k"])
+        for c in encoding.get("count_constraints")
+        or [{"sites": list(range(topo.n_sites)), "k": n_ones_of(spec, topo)}]
+    ]
     ancillas = _ancilla_coefficients(encoding)
     max_dev, best, argmins = Fraction(0), inf, []
     for bits in product((0, 1), repeat=topo.n_sites):
@@ -208,17 +258,31 @@ def verify_encoding(spec, topo, hamiltonian: dict, encoding: dict) -> dict:
             best, argmins = value, [bits]
         elif value == best:
             argmins.append(bits)
-    feasible_argmin = all(all(sum(b[i] for i in sites) == k for sites, k in constraints) for b in argmins)
+    feasible_argmin = all(
+        all(sum(b[i] for i in sites) == k for sites, k in constraints) for b in argmins
+    )
     ok = max_dev == 0 and feasible_argmin
     return make_record(
-        "EncodingVerification", spec.provenance, encoding_id=encoding["artifact_id"], topology_id=topo.topology_id,
+        "EncodingVerification",
+        spec.provenance,
+        encoding_id=encoding["artifact_id"],
+        topology_id=topo.topology_id,
         status=StageStatus.COMPLETED.value if ok else StageStatus.FAILED.value,
-        n_states_checked=2 ** topo.n_sites, n_ancillas_minimised=len(ancillas), max_abs_deviation_exact=str(max_dev),
-        penalized_minimum_eV=float(best), penalized_minimum_exact=str(best),
-        n_penalized_argmins=len(argmins), all_penalized_argmins_feasible=feasible_argmin,
-        penalty_certification=("exhaustive small-instance check" +
-                               ("; also certified by the single-flip bound" if encoding.get("penalty_bound", {})
-                                .get("certified_by_bound") else "; the single-flip bound alone does not certify it")),
+        n_states_checked=2**topo.n_sites,
+        n_ancillas_minimised=len(ancillas),
+        max_abs_deviation_exact=str(max_dev),
+        penalized_minimum_eV=float(best),
+        penalized_minimum_exact=str(best),
+        n_penalized_argmins=len(argmins),
+        all_penalized_argmins_feasible=feasible_argmin,
+        penalty_certification=(
+            "exhaustive small-instance check"
+            + (
+                "; also certified by the single-flip bound"
+                if encoding.get("penalty_bound", {}).get("certified_by_bound")
+                else "; the single-flip bound alone does not certify it"
+            )
+        ),
     )
 
 
@@ -236,7 +300,9 @@ def compile_one_hot(n_sites: int, n_species: int, physical: dict, counts: list, 
     for key, c in physical.items():
         poly = poly_add(poly, {tuple(sorted(var(i, a) for i, a in key)): Fraction(str(c))})
     if degree(poly) > 2:
-        raise PipelineError("UNSUPPORTED_ENCODING_FORMAT", "one-hot physical terms must be at most pairwise")
+        raise PipelineError(
+            "UNSUPPORTED_ENCODING_FORMAT", "one-hot physical terms must be at most pairwise"
+        )
     penalty: dict = {}
     families = [([var(i, a) for a in range(n_species)], 1) for i in range(n_sites)]
     families += [([var(i, a) for i in sites], k) for sites, a, k in counts]
@@ -244,12 +310,19 @@ def compile_one_hot(n_sites: int, n_species: int, physical: dict, counts: list, 
         s = primitive_polynomial(members, k)
         penalty = poly_add(penalty, {key: weight * v for key, v in poly_mul(s, s).items()})
     objective = poly_add(poly, penalty)
-    return {"target": "QUBO_ONE_HOT", "n_sites": n_sites, "n_species": n_species, "weight_exact": str(weight),
-            "terms": {",".join(map(str, k)): str(v) for k, v in sorted(objective.items())},
-            "constraint_families": [{"variables": m, "k": k} for m, k in families],
-            "variable_to_slot": {str(var(i, a)): [i, a] for i in range(n_sites) for a in range(n_species)},
-            "decode_rule": "site i holds the species a with x[i*n_species + a] = 1; reject unless one-hot and counts hold",
-            "penalty_certification": "exhaustive small-instance check only (no general bound derived for one-hot)"}
+    return {
+        "target": "QUBO_ONE_HOT",
+        "n_sites": n_sites,
+        "n_species": n_species,
+        "weight_exact": str(weight),
+        "terms": {",".join(map(str, k)): str(v) for k, v in sorted(objective.items())},
+        "constraint_families": [{"variables": m, "k": k} for m, k in families],
+        "variable_to_slot": {
+            str(var(i, a)): [i, a] for i in range(n_sites) for a in range(n_species)
+        },
+        "decode_rule": "site i holds the species a with x[i*n_species + a] = 1; reject unless one-hot and counts hold",
+        "penalty_certification": "exhaustive small-instance check only (no general bound derived for one-hot)",
+    }
 
 
 def one_hot_energy(encoding: dict, x) -> Fraction:
@@ -264,7 +337,9 @@ def one_hot_energy(encoding: dict, x) -> Fraction:
 def decode_one_hot(encoding: dict, x):
     """Species per site, or None when the bit string violates any constraint."""
     s, n = encoding["n_species"], encoding["n_sites"]
-    if any(sum(x[v] for v in fam["variables"]) != fam["k"] for fam in encoding["constraint_families"]):
+    if any(
+        sum(x[v] for v in fam["variables"]) != fam["k"] for fam in encoding["constraint_families"]
+    ):
         return None
     return tuple(next(a for a in range(s) if x[i * s + a]) for i in range(n))
 
@@ -274,7 +349,10 @@ def verify_one_hot(encoding: dict, physical_energy) -> dict:
     over all 2^(n*s) strings is feasible."""
     n_vars = encoding["n_sites"] * encoding["n_species"]
     if n_vars > 20:
-        return {"status": "UNCERTIFIED", "reason": f"{n_vars} variables exceed the exhaustive limit"}
+        return {
+            "status": "UNCERTIFIED",
+            "reason": f"{n_vars} variables exceed the exhaustive limit",
+        }
     best, argmins, max_dev = inf, [], Fraction(0)
     for x in product((0, 1), repeat=n_vars):
         e = one_hot_energy(encoding, x)
@@ -286,10 +364,14 @@ def verify_one_hot(encoding: dict, physical_energy) -> dict:
         elif e == best:
             argmins.append(x)
     feasible = all(decode_one_hot(encoding, x) is not None for x in argmins)
-    return {"status": "COMPLETED" if feasible and max_dev == 0 else "FAILED", "n_states_checked": 2 ** n_vars,
-            "max_abs_deviation_exact": str(max_dev), "encoded_minimum_exact": str(best),
-            "minimizers": sorted({d for x in argmins if (d := decode_one_hot(encoding, x))}),
-            "all_minimizers_feasible": feasible}
+    return {
+        "status": "COMPLETED" if feasible and max_dev == 0 else "FAILED",
+        "n_states_checked": 2**n_vars,
+        "max_abs_deviation_exact": str(max_dev),
+        "encoded_minimum_exact": str(best),
+        "minimizers": sorted({d for x in argmins if (d := decode_one_hot(encoding, x))}),
+        "all_minimizers_feasible": feasible,
+    }
 
 
 def one_hot_states(n_sites: int, counts_by_species: list) -> list:
@@ -305,5 +387,6 @@ def one_hot_states(n_sites: int, counts_by_species: list) -> list:
                 remaining[a] -= 1
                 rec(prefix + [a], remaining)
                 remaining[a] += 1
+
     rec([], list(counts_by_species))
     return out

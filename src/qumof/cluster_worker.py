@@ -16,6 +16,7 @@ SCF numerics are declared per level (part of the embedding fidelity): ``scf_solv
 ``newton`` (second-order SCF, for transition-metal clusters where DIIS oscillates), ``max_cycle``, ``level_shift_Ha``.
 One OpenMP thread unless ``n_threads`` says otherwise; energies are Hartree.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,9 @@ import time
 from pathlib import Path
 from typing import Any
 
-WORKER_VERSION = "3"  # bump when a change alters the computed quantities (part of the embedding fidelity)
+WORKER_VERSION = (
+    "3"  # bump when a change alters the computed quantities (part of the embedding fidelity)
+)
 DISPERSION_NAMES = {"grimme-d3": "d3zero", "d3zero": "d3zero", "d3bj": "d3bj", "d4": "d4"}
 METHODS = ("DFT", "HF", "MP2", "CCSD", "CCSD(T)", "active_space")
 
@@ -40,54 +43,100 @@ def _scf(mf, level: dict, conv_tol: float):
 
 def compute(job: dict) -> dict:
     from pyscf import __version__ as pyscf_version, cc, dft, gto, lib, mp, scf
+
     level, start = job["level"], time.perf_counter()
     method = level["method"]
     if method not in METHODS:
         return {"status": "FAILED", "error": {"code": "UNSUPPORTED_METHOD", "detail": method}}
     with lib.with_omp_threads(job.get("n_threads", 1)):
-        mol = gto.M(atom=[[e, tuple(r)] for e, r in zip(job["elements"], job["coords_A"])], unit="Angstrom",
-                    basis=job["basis"], ecp=job.get("ecp") or {}, charge=job["charge"], spin=job["spin"], verbose=0)
+        mol = gto.M(
+            atom=[[e, tuple(r)] for e, r in zip(job["elements"], job["coords_A"])],
+            unit="Angstrom",
+            basis=job["basis"],
+            ecp=job.get("ecp") or {},
+            charge=job["charge"],
+            spin=job["spin"],
+            verbose=0,
+        )
         open_shell = job["spin"] != 0
         mf: Any  # pyscf SCF objects are composed at runtime (newton(), disp, ...); pyright misreads their attributes
-        details = {"n_ao": mol.nao_nr(), "n_electrons": int(mol.nelectron), "reference": "U" if open_shell else "R"}
+        details = {
+            "n_ao": mol.nao_nr(),
+            "n_electrons": int(mol.nelectron),
+            "reference": "U" if open_shell else "R",
+        }
         if method == "active_space":
             sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
             from qumof import electronic_solvers
             from qumof.active_space import prepare_active_space
-            system = {"system_id": job["cluster_hash"], "atoms": [[e, *r] for e, r in zip(job["elements"], job["coords_A"])],
-                      "unit": "Angstrom", "charge": job["charge"], "spin": job["spin"], "provenance": job.get("provenance")}
+
+            system = {
+                "system_id": job["cluster_hash"],
+                "atoms": [[e, *r] for e, r in zip(job["elements"], job["coords_A"])],
+                "unit": "Angstrom",
+                "charge": job["charge"],
+                "spin": job["spin"],
+                "provenance": job.get("provenance"),
+            }
             from qumof.contract import PipelineError
+
             try:
-                artifact = prepare_active_space(system, {**level["active_space"], "basis": job["basis"], "embedding": "none"})
-            except PipelineError as exc:  # e.g. the reference SCF did not converge: a failure, never an energy
-                return {"status": "FAILED", "energy_Ha": None, "error": exc.as_dict(), "details": details,
-                        "versions": {"pyscf": pyscf_version, "worker": WORKER_VERSION}}
+                artifact = prepare_active_space(
+                    system, {**level["active_space"], "basis": job["basis"], "embedding": "none"}
+                )
+            except (
+                PipelineError
+            ) as exc:  # e.g. the reference SCF did not converge: a failure, never an energy
+                return {
+                    "status": "FAILED",
+                    "energy_Ha": None,
+                    "error": exc.as_dict(),
+                    "details": details,
+                    "versions": {"pyscf": pyscf_version, "worker": WORKER_VERSION},
+                }
             if level["solver"] == "sqd_simulation":
                 # SQD samples a prepared state: the simulated VQE state on the same Hamiltonian is the source, and
                 # both energies are reported (the SQD energy is the level's energy).
                 vqe = electronic_solvers.vqe_simulation(artifact)
                 cfg = level.get("sqd") or {}
-                solver = electronic_solvers.sqd_simulation(artifact, vqe["final_state"], cfg.get("shots", 2000),
-                                                           cfg.get("seed", 1), cfg.get("flip_probability", 0.0),
-                                                           vqe["artifact_id"])
-                details.update(vqe_energy_Ha=vqe["energy_Ha"], vqe_parameters=vqe["n_parameters"],
-                               sqd_subspace_dimension=solver["subspace_dimension"],
-                               sqd_full_sector_dimension=solver["full_sector_dimension"],
-                               sqd_in_sector_fraction=solver["in_sector_fraction"])
+                solver = electronic_solvers.sqd_simulation(
+                    artifact,
+                    vqe["final_state"],
+                    cfg.get("shots", 2000),
+                    cfg.get("seed", 1),
+                    cfg.get("flip_probability", 0.0),
+                    vqe["artifact_id"],
+                )
+                details.update(
+                    vqe_energy_Ha=vqe["energy_Ha"],
+                    vqe_parameters=vqe["n_parameters"],
+                    sqd_subspace_dimension=solver["subspace_dimension"],
+                    sqd_full_sector_dimension=solver["full_sector_dimension"],
+                    sqd_in_sector_fraction=solver["in_sector_fraction"],
+                )
             else:
                 solver = getattr(electronic_solvers, level["solver"])(artifact)
             if artifact["n_active_orbitals"] <= 8:  # exact reference for the same active space
-                details["exact_active_space_energy_Ha"] = electronic_solvers.exact_diagonalization(artifact)["energy_Ha"]
+                details["exact_active_space_energy_Ha"] = electronic_solvers.exact_diagonalization(
+                    artifact
+                )["energy_Ha"]
             energy, converged = solver["energy_Ha"], solver["status"] == "COMPLETED"
-            details.update(active_space_id=artifact["artifact_id"], hamiltonian_hash=artifact["hamiltonian_hash"],
-                           solver=level["solver"], exactness=solver.get("exactness"),
-                           mean_field_energy_Ha=artifact["mean_field"]["energy_Ha"])
+            details.update(
+                active_space_id=artifact["artifact_id"],
+                hamiltonian_hash=artifact["hamiltonian_hash"],
+                solver=level["solver"],
+                exactness=solver.get("exactness"),
+                mean_field_energy_Ha=artifact["mean_field"]["energy_Ha"],
+            )
         elif method == "DFT":
             mf = (dft.UKS if open_shell else dft.RKS)(mol)
             mf.xc = level["xc"]
             if level.get("dispersion") not in (None, "none"):
                 if level["dispersion"] not in DISPERSION_NAMES:
-                    return {"status": "FAILED", "error": {"code": "UNSUPPORTED_DISPERSION", "detail": level["dispersion"]}}
+                    return {
+                        "status": "FAILED",
+                        "error": {"code": "UNSUPPORTED_DISPERSION", "detail": level["dispersion"]},
+                    }
                 mf.disp = DISPERSION_NAMES[level["dispersion"]]
             mf = _scf(mf, level, job["conv_tol_Ha"])
             energy, converged = mf.kernel(), mf.converged
@@ -103,9 +152,15 @@ def compute(job: dict) -> dict:
                 mycc.kernel()
                 converged = converged and mycc.converged
                 energy = mycc.e_tot + (mycc.ccsd_t() if method == "CCSD(T)" else 0.0)
-    return {"status": "SUCCEEDED" if converged else "FAILED", "energy_Ha": float(energy), "converged": bool(converged),
-            "error": None if converged else {"code": "NOT_CONVERGED", "detail": method}, "details": details,
-            "versions": {"pyscf": pyscf_version, "worker": WORKER_VERSION}, "wall_time_s": round(time.perf_counter() - start, 3)}
+    return {
+        "status": "SUCCEEDED" if converged else "FAILED",
+        "energy_Ha": float(energy),
+        "converged": bool(converged),
+        "error": None if converged else {"code": "NOT_CONVERGED", "detail": method},
+        "details": details,
+        "versions": {"pyscf": pyscf_version, "worker": WORKER_VERSION},
+        "wall_time_s": round(time.perf_counter() - start, 3),
+    }
 
 
 def main(argv) -> int:

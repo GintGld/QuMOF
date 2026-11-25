@@ -13,6 +13,7 @@ test of Task 03), and physically inequivalent slots or pairs stay separate even 
 Pairs are enumerated by slot-centroid distance up to the largest cutoff requested by a model candidate
 (``pairs<=R`` tokens, R in angstrom). Triplet clusters are not generated (the fixed BBB_paths feature remains).
 """
+
 from __future__ import annotations
 
 import itertools
@@ -35,8 +36,14 @@ def _norm(v) -> float:
 
 def _widths(lattice) -> list:
     a = lattice
-    cross = [tuple(a[(k + 1) % 3][(c + 1) % 3] * a[(k + 2) % 3][(c + 2) % 3]
-                   - a[(k + 1) % 3][(c + 2) % 3] * a[(k + 2) % 3][(c + 1) % 3] for c in range(3)) for k in range(3)]
+    cross = [
+        tuple(
+            a[(k + 1) % 3][(c + 1) % 3] * a[(k + 2) % 3][(c + 2) % 3]
+            - a[(k + 1) % 3][(c + 2) % 3] * a[(k + 2) % 3][(c + 1) % 3]
+            for c in range(3)
+        )
+        for k in range(3)
+    ]
     volume = abs(sum(a[0][c] * cross[0][c] for c in range(3)))
     return [volume / _norm(cross[k]) for k in range(3)]
 
@@ -66,7 +73,12 @@ def pair_key(op_list, type_a, fa, type_b, fb) -> tuple:
         qa, qb = _apply(op, fa), _apply(op, fb)
         for (ta, a), (tb, b) in (((type_a, qa), (type_b, qb)), ((type_b, qb), (type_a, qa))):
             shift = tuple(math.floor(x + 0.5 / KEY_SCALE) for x in a)
-            key = (ta, _ikey(tuple(x - s for x, s in zip(a, shift))), tb, _ikey(tuple(x - s for x, s in zip(b, shift))))
+            key = (
+                ta,
+                _ikey(tuple(x - s for x, s in zip(a, shift))),
+                tb,
+                _ikey(tuple(x - s for x, s in zip(b, shift))),
+            )
             if best is None or key < best:
                 best = key
     assert best is not None  # op_list always holds at least the identity
@@ -79,8 +91,15 @@ def parent_sites(slots: list, diag) -> list:
     for s in slots:
         p = tuple(s["centroid_frac"][k] * diag[k] for k in range(3))
         cell = tuple(math.floor(x + 0.5 / KEY_SCALE) for x in p)
-        out.append({"slot_id": s["slot_id"], "slot_type": s["slot_type"], "absolute": p,
-                    "site": tuple(x - c for x, c in zip(p, cell)), "cell": cell})
+        out.append(
+            {
+                "slot_id": s["slot_id"],
+                "slot_type": s["slot_type"],
+                "absolute": p,
+                "site": tuple(x - c for x, c in zip(p, cell)),
+                "cell": cell,
+            }
+        )
     return out
 
 
@@ -103,9 +122,17 @@ def build_catalogue(lattice_info: dict, cutoff_A: float) -> dict:
                 key = pair_key(ops, ta, fa, tb, fb_shift)
                 pairs.setdefault(key, round(d, DIST_ROUND))
     ordered = sorted(pairs.items(), key=lambda kv: (kv[1], kv[0]))
-    return {"cutoff_A": cutoff_A, "point_orbits": [{"name": f"point_orbit_{k}", "slot_type": t, "key": key}
-                                                    for k, (t, key) in enumerate(point_keys)],
-            "pair_orbits": [{"name": f"pair_orbit_{k}", "distance_A": d, "key": key} for k, (key, d) in enumerate(ordered)]}
+    return {
+        "cutoff_A": cutoff_A,
+        "point_orbits": [
+            {"name": f"point_orbit_{k}", "slot_type": t, "key": key}
+            for k, (t, key) in enumerate(point_keys)
+        ],
+        "pair_orbits": [
+            {"name": f"pair_orbit_{k}", "distance_A": d, "key": key}
+            for k, (key, d) in enumerate(ordered)
+        ],
+    }
 
 
 def supercell_clusters(lattice_info: dict, catalogue: dict) -> tuple:
@@ -125,7 +152,10 @@ def supercell_clusters(lattice_info: dict, catalogue: dict) -> tuple:
     for s in sites:
         name = point_index.get((s["slot_type"], site_key(ops, s["site"])))
         if name is None:
-            raise PipelineError("CLUSTER_CATALOGUE_MISMATCH", f"slot {s['slot_id']} site not in the parent catalogue")
+            raise PipelineError(
+                "CLUSTER_CATALOGUE_MISMATCH",
+                f"slot {s['slot_id']} site not in the parent catalogue",
+            )
         point_terms[name].append((s["slot_id"], 1))
     pair_terms = {p["name"]: {} for p in catalogue["pair_orbits"]}
     super_lattice = [[x * diag[k] for x in parent_lattice[k]] for k in range(3)]
@@ -135,17 +165,32 @@ def supercell_clusters(lattice_info: dict, catalogue: dict) -> tuple:
             if a["slot_id"] == b["slot_id"] and shift <= (0, 0, 0):
                 continue  # each self-image pair once
             fb = tuple(b["absolute"][k] + shift[k] * diag[k] for k in range(3))
-            d = _norm(_frac_to_cart(parent_lattice, tuple(fb[k] - a["absolute"][k] for k in range(3))))
+            d = _norm(
+                _frac_to_cart(parent_lattice, tuple(fb[k] - a["absolute"][k] for k in range(3)))
+            )
             if d > cutoff + 1e-9 or d < 1e-6:
                 continue
             orbit = pair_index.get(pair_key(ops, a["slot_type"], a["absolute"], b["slot_type"], fb))
             if orbit is None:
-                raise PipelineError("CLUSTER_CATALOGUE_MISMATCH", f"pair {a['slot_id']}-{b['slot_id']} not in the catalogue")
+                raise PipelineError(
+                    "CLUSTER_CATALOGUE_MISMATCH",
+                    f"pair {a['slot_id']}-{b['slot_id']} not in the catalogue",
+                )
             key = (a["slot_id"], b["slot_id"])
             pair_terms[orbit["name"]][key] = pair_terms[orbit["name"]].get(key, 0) + 1
-    out = [(p["name"], "point", None, tuple(sorted(point_terms[p["name"]]))) for p in catalogue["point_orbits"]]
-    out += [(p["name"], "pair", p["distance_A"], tuple(sorted((i, j, w) for (i, j), w in pair_terms[p["name"]].items())))
-            for p in catalogue["pair_orbits"]]
+    out = [
+        (p["name"], "point", None, tuple(sorted(point_terms[p["name"]])))
+        for p in catalogue["point_orbits"]
+    ]
+    out += [
+        (
+            p["name"],
+            "pair",
+            p["distance_A"],
+            tuple(sorted((i, j, w) for (i, j), w in pair_terms[p["name"]].items())),
+        )
+        for p in catalogue["pair_orbits"]
+    ]
     return tuple(out)
 
 
@@ -189,13 +234,18 @@ def names_for_token(topo, token: str) -> list:
     if token == "point_orbits":
         return [name for name, kind, _, _ in topo.clusters if kind == "point"]
     if token.startswith("pairs<="):
-        radius = float(token[len("pairs<="):])
+        radius = float(token[len("pairs<=") :])
         return [name for name, kind, d, _ in topo.clusters if kind == "pair" and d <= radius + 1e-9]
     raise PipelineError("UNSUPPORTED_FEATURE", token)
 
 
 def requested_cutoff(candidates: list) -> float | None:
-    radii = [float(t[len("pairs<="):]) for c in candidates for t in c.get("features", []) if t.startswith("pairs<=")]
+    radii = [
+        float(t[len("pairs<=") :])
+        for c in candidates
+        for t in c.get("features", [])
+        if t.startswith("pairs<=")
+    ]
     uses_points = any(t == "point_orbits" for c in candidates for t in c.get("features", []))
     if not radii and not uses_points:
         return None

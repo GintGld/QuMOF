@@ -19,6 +19,7 @@ passes) x (largest label count / own label count), D'Hondt-style, so an uncertai
 receives candidates. Only unlabelled, never-attempted orbits outside the frozen holdout are eligible.
 Constraint penalties never enter: predictions are physical energies of feasible decorations.
 """
+
 from __future__ import annotations
 
 import math
@@ -34,7 +35,10 @@ POLICY_REQUIRED = ("batch_size", "weights", "audit_fraction", "min_per_topology"
 def policy_errors(policy: dict) -> list:
     errors = [k for k in POLICY_REQUIRED if policy.get(k) is None]
     weights = policy.get("weights") or {}
-    if not errors and (set(weights) != {"energy", "uncertainty", "diversity"} or any(w < 0 for w in weights.values())):
+    if not errors and (
+        set(weights) != {"energy", "uncertainty", "diversity"}
+        or any(w < 0 for w in weights.values())
+    ):
         errors.append("weights")
     if not errors and not 0 <= policy["audit_fraction"] < 1:
         errors.append("audit_fraction")
@@ -49,7 +53,11 @@ def acquisition_model(selection: dict) -> dict | None:
     """The selected model, else the completed candidate with the lowest CV RMSE (exploration still needs a model)."""
     done = [c for c in selection["candidates"] if c["status"] == "COMPLETED"]
     chosen = [c for c in done if c["model_id"] == selection.get("selected_model")]
-    return chosen[0] if chosen else min(done, key=lambda c: (c["cv_rmse_eV"], c["model_id"]), default=None)
+    return (
+        chosen[0]
+        if chosen
+        else min(done, key=lambda c: (c["cv_rmse_eV"], c["model_id"]), default=None)
+    )
 
 
 def _scores(topo, model: dict, pool: list, labelled: list) -> tuple[list, list]:
@@ -62,9 +70,20 @@ def _scores(topo, model: dict, pool: list, labelled: list) -> tuple[list, list]:
         pred = sum((c * v for c, v in zip(coef, x)), Fraction(0))
         committee = [float(sum((c * v for c, v in zip(f, x)), Fraction(0))) for f in folds]
         mean = sum(committee) / len(committee)
-        rows.append({"orbit_id": orbit, "x": [float(v) for v, n in zip(x, names) if n != "constant"],
-                     "predicted_eV": float(pred), "uncertainty_eV": math.sqrt(sum((c - mean) ** 2 for c in committee) / len(committee))})
-    known = [[float(v) for v, n in zip(feature_vector(topo, bits, names), names) if n != "constant"] for bits in labelled]
+        rows.append(
+            {
+                "orbit_id": orbit,
+                "x": [float(v) for v, n in zip(x, names) if n != "constant"],
+                "predicted_eV": float(pred),
+                "uncertainty_eV": math.sqrt(
+                    sum((c - mean) ** 2 for c in committee) / len(committee)
+                ),
+            }
+        )
+    known = [
+        [float(v) for v, n in zip(feature_vector(topo, bits, names), names) if n != "constant"]
+        for bits in labelled
+    ]
     return rows, known
 
 
@@ -89,7 +108,9 @@ def _allocate(quota: dict, need: dict, available: dict, total: int) -> dict:
     return quota
 
 
-def select_evaluation_batch(spec, split: dict, selections: dict, snapshot: dict, attempted: dict, round_index: int) -> dict:
+def select_evaluation_batch(
+    spec, split: dict, selections: dict, snapshot: dict, attempted: dict, round_index: int
+) -> dict:
     """select_evaluation_batch(candidate_set_id, model_snapshot_id, acquisition_policy_id, budget_id) -> AcquisitionBatch."""
     policy = spec.physical["protocols"]["acquisition"]
     missing = policy_errors(policy)
@@ -106,10 +127,14 @@ def select_evaluation_batch(spec, split: dict, selections: dict, snapshot: dict,
     most = max((len(v) for v in labelled.values()), default=1) or 1
     for tid in spec.topologies:
         model = acquisition_model(selections[tid])
-        base = (2.0 if selections[tid]["status"] != "COMPLETED" else 0.0) + (model["cv_rmse_eV"] / tol if model else 2.0)
+        base = (2.0 if selections[tid]["status"] != "COMPLETED" else 0.0) + (
+            model["cv_rmse_eV"] / tol if model else 2.0
+        )
         need[tid] = max(base, 1e-9) * most / max(len(labelled[tid]), 1)
     quota = {t: min(policy["min_per_topology"], len(pools[t])) for t in spec.topologies}
-    quota = _allocate(quota, need, {t: len(pools[t]) for t in spec.topologies}, policy["batch_size"])
+    quota = _allocate(
+        quota, need, {t: len(pools[t]) for t in spec.topologies}, policy["batch_size"]
+    )
     chosen = []
     for tid, topo in spec.topologies.items():
         q = quota[tid]
@@ -118,7 +143,14 @@ def select_evaluation_batch(spec, split: dict, selections: dict, snapshot: dict,
         model = acquisition_model(selections[tid])
         if model is None:  # no fitted model yet: seeded uniform exploration
             for orbit in rng.sample(pools[tid], q):
-                chosen.append({"topology_id": tid, "orbit_id": orbit, "reason": "exploration_without_model", "score": None})
+                chosen.append(
+                    {
+                        "topology_id": tid,
+                        "orbit_id": orbit,
+                        "reason": "exploration_without_model",
+                        "score": None,
+                    }
+                )
             continue
         rows, known = _scores(topo, model, pools[tid], labelled[tid])
         energy = _normalise([-r["predicted_eV"] for r in rows])
@@ -130,28 +162,73 @@ def select_evaluation_batch(spec, split: dict, selections: dict, snapshot: dict,
         for _ in range(q - n_audit):
             dist = [min((_distance(r["x"], k) for k in known), default=1.0) for r in remaining]
             div = _normalise(dist)
-            scored = [(weights["energy"] * r["energy_score"] + weights["uncertainty"] * r["uncertainty_score"]
-                       + weights["diversity"] * d, r["orbit_id"], r, d) for r, d in zip(remaining, div)]
+            scored = [
+                (
+                    weights["energy"] * r["energy_score"]
+                    + weights["uncertainty"] * r["uncertainty_score"]
+                    + weights["diversity"] * d,
+                    r["orbit_id"],
+                    r,
+                    d,
+                )
+                for r, d in zip(remaining, div)
+            ]
             score, _, best, d = max(scored, key=lambda t: (t[0], [-ord(ch) for ch in t[1]]))
-            picks.append({"topology_id": tid, "orbit_id": best["orbit_id"], "reason": "policy_score",
-                          "score": score, "components": {"energy": best["energy_score"], "uncertainty": best["uncertainty_score"],
-                                                         "diversity": d},
-                          "predicted_eV_per_fu": best["predicted_eV"], "committee_std_eV": best["uncertainty_eV"]})
+            picks.append(
+                {
+                    "topology_id": tid,
+                    "orbit_id": best["orbit_id"],
+                    "reason": "policy_score",
+                    "score": score,
+                    "components": {
+                        "energy": best["energy_score"],
+                        "uncertainty": best["uncertainty_score"],
+                        "diversity": d,
+                    },
+                    "predicted_eV_per_fu": best["predicted_eV"],
+                    "committee_std_eV": best["uncertainty_eV"],
+                }
+            )
             known.append(best["x"])
             remaining.remove(best)
         if n_audit:
             # Deprioritised region: the lower half of the energy+uncertainty score among what is left.
-            ranked = sorted(remaining, key=lambda r: (weights["energy"] * r["energy_score"]
-                                                      + weights["uncertainty"] * r["uncertainty_score"], r["orbit_id"]))
-            low = ranked[:max(n_audit, len(ranked) // 2)]
+            ranked = sorted(
+                remaining,
+                key=lambda r: (
+                    weights["energy"] * r["energy_score"]
+                    + weights["uncertainty"] * r["uncertainty_score"],
+                    r["orbit_id"],
+                ),
+            )
+            low = ranked[: max(n_audit, len(ranked) // 2)]
             for r in rng.sample(low, min(n_audit, len(low))):
-                picks.append({"topology_id": tid, "orbit_id": r["orbit_id"], "reason": "audit_deprioritised_region",
-                              "score": None, "predicted_eV_per_fu": r["predicted_eV"], "committee_std_eV": r["uncertainty_eV"]})
+                picks.append(
+                    {
+                        "topology_id": tid,
+                        "orbit_id": r["orbit_id"],
+                        "reason": "audit_deprioritised_region",
+                        "score": None,
+                        "predicted_eV_per_fu": r["predicted_eV"],
+                        "committee_std_eV": r["uncertainty_eV"],
+                    }
+                )
         for p in picks:
-            p["model_id"], p["selection_report_id"] = model["model_id"], selections[tid]["artifact_id"]
+            p["model_id"], p["selection_report_id"] = (
+                model["model_id"],
+                selections[tid]["artifact_id"],
+            )
         chosen += picks
     return make_record(
-        "AcquisitionBatch", spec.provenance, round=round_index, snapshot_id=snapshot["artifact_id"],
-        policy=policy, quota=quota, need=need, selected=chosen,
+        "AcquisitionBatch",
+        spec.provenance,
+        round=round_index,
+        snapshot_id=snapshot["artifact_id"],
+        policy=policy,
+        quota=quota,
+        need=need,
+        selected=chosen,
         eligible={t: len(pools[t]) for t in spec.topologies},
-        holdout_excluded=True, note="committee spread guides exploration only; it is not a calibrated error bound")
+        holdout_excluded=True,
+        note="committee spread guides exploration only; it is not a calibrated error bound",
+    )
