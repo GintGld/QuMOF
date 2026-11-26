@@ -350,8 +350,8 @@ def deconstruct(structure: dict, bond_tolerance: float) -> dict:
     for n_id, node in enumerate(out_nodes):
         node["incidences"] = sorted(
             (l_id, frame)
-            for l_id, l in enumerate(out_linkers)  # noqa: E741
-            for nid, frame in l["node_incidences"]
+            for l_id, linker in enumerate(out_linkers)
+            for nid, frame in linker["node_incidences"]
             if nid == n_id
         )
     return {
@@ -482,28 +482,32 @@ def build_slot_lattice(
                 f"a {kind[:-1]} component is connected to its own periodic image",
             )
     node_species = [species_for_formula(n["formula"], blocks, "node") for n in parts["nodes"]]
-    linker_species = [species_for_formula(l["formula"], blocks, "linker") for l in parts["linkers"]]  # noqa: E741
+    linker_species = [
+        species_for_formula(linker["formula"], blocks, "linker") for linker in parts["linkers"]
+    ]
     for formula, sp in zip([n["formula"] for n in parts["nodes"]], node_species, strict=False):
         if sp is None:
             fail("UNKNOWN_NODE", str(formula))
-    for formula, sp in zip([l["formula"] for l in parts["linkers"]], linker_species, strict=False):  # noqa: E741
+    for formula, sp in zip(
+        [linker["formula"] for linker in parts["linkers"]], linker_species, strict=False
+    ):
         if sp is None:
             fail("UNKNOWN_LINKER", str(formula))
     if errors:
         return {"errors": errors}
 
     # Connector count/geometry: declared connector atoms and points of extension per block.
-    for l, sp in zip(parts["linkers"], linker_species, strict=False):  # noqa: E741
+    for linker, sp in zip(parts["linkers"], linker_species, strict=False):
         block = blocks[sp]
-        if len(l["connector_atoms"]) != block["n_connector_atoms"]:
+        if len(linker["connector_atoms"]) != block["n_connector_atoms"]:
             fail(
                 "INVALID_CONNECTOR_COUNT",
-                f"{sp}: {len(l['connector_atoms'])} != {block['n_connector_atoms']}",
+                f"{sp}: {len(linker['connector_atoms'])} != {block['n_connector_atoms']}",
             )
-        if len(l["node_incidences"]) != block["connectivity"]:
+        if len(linker["node_incidences"]) != block["connectivity"]:
             fail(
                 "INVALID_CONNECTIVITY",
-                f"{sp}: binds {len(l['node_incidences'])} nodes, declared {block['connectivity']}",
+                f"{sp}: binds {len(linker['node_incidences'])} nodes, declared {block['connectivity']}",
             )
     for n, sp in zip(parts["nodes"], node_species, strict=False):
         if len(n["incidences"]) != blocks[sp]["connectivity"]:
@@ -516,17 +520,17 @@ def build_slot_lattice(
     order = sorted(range(len(parts["linkers"])), key=lambda i: _slot_key(parts["linkers"][i]))
     slots = []
     for slot_id, li in enumerate(order):
-        l = parts["linkers"][li]  # noqa: E741
+        linker = parts["linkers"][li]
         slots.append(
             {
                 "slot_id": slot_id,
                 "linker_index": li,
                 "slot_type": blocks[linker_species[li]]["slot_type"],
                 "parent_species": linker_species[li],
-                "centroid_frac": l["centroid_frac"],
-                "connector_centroid_frac": l["connector_centroid_frac"],
-                "atoms": l["atoms"],
-                "node_incidences": l["node_incidences"],
+                "centroid_frac": linker["centroid_frac"],
+                "connector_centroid_frac": linker["connector_centroid_frac"],
+                "atoms": linker["atoms"],
+                "node_incidences": linker["node_incidences"],
             }
         )
     slot_of = {s["linker_index"]: s["slot_id"] for s in slots}
@@ -803,7 +807,7 @@ def map_to_parent_slots(
     lattice = geometry["lattice"]
     slot_of = _match(
         lattice,
-        [l.get("connector_centroid_frac") for l in parts["linkers"]],  # noqa: E741
+        [linker.get("connector_centroid_frac") for linker in parts["linkers"]],
         [s["connector_centroid_frac"] for s in info["slots"]],
         tolerance_A,
     )
@@ -816,8 +820,11 @@ def map_to_parent_slots(
     if slot_of is None or node_of is None:
         return {"retained": False, "reason": "SLOT_MAPPING_FAILED"}
     found = sorted(
-        (slot_of[i], tuple(sorted(Counter(node_of[n] for n, _ in l["node_incidences"]).items())))
-        for i, l in enumerate(parts["linkers"])  # noqa: E741
+        (
+            slot_of[i],
+            tuple(sorted(Counter(node_of[n] for n, _ in linker["node_incidences"]).items())),
+        )
+        for i, linker in enumerate(parts["linkers"])
     )
     reference = sorted(
         (s["slot_id"], tuple(sorted(Counter(n for n, _ in s["node_incidences"]).items())))

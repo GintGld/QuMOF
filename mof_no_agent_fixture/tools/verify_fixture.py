@@ -1,5 +1,6 @@
 """Offline acceptance harness. Never import this module into the learner."""
 
+import functools
 import json
 import subprocess
 import sys
@@ -8,7 +9,22 @@ from copy import deepcopy
 from fractions import Fraction
 from itertools import product
 
-from fixture_core import *  # noqa: F403
+from fixture_core import (
+    ROOT,
+    canonical,
+    check_energy_compatibility,
+    compile_pair_qubo,
+    evaluate_qubo,
+    feasible_states,
+    features,
+    normalize_cell_energy,
+    predict,
+    read_json,
+    read_jsonl,
+    rmse,
+    validate_bits,
+    write_json,
+)
 
 
 def require(condition, message):
@@ -30,11 +46,11 @@ def expect_error(call, message):
 
 
 def main():
-    topologies = read_json(ROOT / "data/topologies.json")  # noqa: F405
-    expected = read_json(ROOT / "harness/expected_results.json")  # noqa: F405
-    splits = read_json(ROOT / "data/split_manifest.json")  # noqa: F405
+    topologies = read_json(ROOT / "data/topologies.json")
+    expected = read_json(ROOT / "harness/expected_results.json")
+    splits = read_json(ROOT / "data/split_manifest.json")
     checks = []
-    states = list(feasible_states())  # noqa: F405
+    states = list(feasible_states())
     require(len(states) == 924, "Feasible enumeration cardinality")
     for topo in topologies:
         name = topo["topology_id"]
@@ -49,7 +65,7 @@ def main():
             )
             for q in perms:
                 require(tuple(p[q[i]] for i in range(12)) in perms, "Symmetries not closed")
-        orbit_set = {name + ":" + canonical(topo, b) for b in states}  # noqa: F405
+        orbit_set = {name + ":" + canonical(topo, b) for b in states}
         # Independent expected counts, not inferred only from the generated gold file.
         require(len(orbit_set) == (50 if name == "ring12" else 55), "Wrong symmetry quotient")
         groups = [set(splits[name][key]) for key in ("training", "development", "holdout")]
@@ -59,10 +75,10 @@ def main():
         )
         require(set.union(*groups) == orbit_set, "Missing orbit in partition")
         for b in states:
-            validate_bits(b)  # noqa: F405
-            f = features(topo, b)  # noqa: F405
+            validate_bits(b)
+            f = features(topo, b)
             for p in perms:
-                require(features(topo, tuple(b[j] for j in p)) == f, "Feature symmetry violation")  # noqa: F405
+                require(features(topo, tuple(b[j] for j in p)) == f, "Feature symmetry violation")
         # An XY exchange along graph edges must reach every fixed-count bit string.
         seen = {states[0]}
         queue = deque(seen)
@@ -80,15 +96,15 @@ def main():
         checks.append(name + ": symmetry, grouped splits, constraints, swap reachability")
     # Verify datasets and the independent alternating-state lower bound.
     for case in ("core_pairwise", "higher_order"):
-        training = read_jsonl(ROOT / ("data/" + case + "_training.jsonl"))  # noqa: F405
-        development = read_jsonl(ROOT / ("data/" + case + "_development.jsonl"))  # noqa: F405
-        holdout = read_jsonl(ROOT / ("harness/" + case + "_holdout.jsonl"))  # noqa: F405
-        all_labels = read_jsonl(ROOT / ("harness/" + case + "_all_labels.jsonl"))  # noqa: F405
+        training = read_jsonl(ROOT / ("data/" + case + "_training.jsonl"))
+        development = read_jsonl(ROOT / ("data/" + case + "_development.jsonl"))
+        holdout = read_jsonl(ROOT / ("harness/" + case + "_holdout.jsonl"))
+        all_labels = read_jsonl(ROOT / ("harness/" + case + "_all_labels.jsonl"))
         require(
             [len(training), len(development), len(holdout), len(all_labels)] == [60, 20, 25, 1848],
             "Dataset cardinality",
         )
-        check_energy_compatibility(training + development + holdout)  # noqa: F405
+        check_energy_compatibility(training + development + holdout)
         for subset, key in (
             (training, "training"),
             (development, "development"),
@@ -109,23 +125,23 @@ def main():
             close(lower, -0.12 if name == "ring12" else -0.16)
             # Unlike count cannot exceed edge count, and all other terms are nonnegative.
             alternating = tuple(map(int, "010101010101" if name == "ring12" else "010101101010"))
-            f = features(topo, alternating)  # noqa: F405
+            f = features(topo, alternating)
             require(
                 f[1] == len(topo["pairs_distance_1"]) and f[2:] == [0, 0],
                 "Lower bound not attained",
             )
             for row in rows:
-                f = features(topo, row["bits"])  # noqa: F405
+                f = features(topo, row["bits"])
                 val = baseline - Fraction(f[1], 50) + Fraction(3 * f[2], 500)
                 if case == "higher_order":
                     val += Fraction(3 * f[3], 200)
                 close(row["energy_eV"], val)
         for mode in ("none", "constant", "topology_dependent"):
-            output = ROOT / "reference_outputs" / (case + "_" + mode + ".json")  # noqa: F405
+            output = ROOT / "reference_outputs" / (case + "_" + mode + ".json")
             subprocess.run(
                 [
                     sys.executable,
-                    str(ROOT / "tools/reference_run.py"),  # noqa: F405
+                    str(ROOT / "tools/reference_run.py"),
                     "--case",
                     case,
                     "--correction",
@@ -137,7 +153,7 @@ def main():
                 stdout=subprocess.PIPE,
                 text=True,
             )
-            report = read_json(output)  # noqa: F405
+            report = read_json(output)
             truth = expected[case]["correction_tests"][mode]
             require(
                 report["winning_topology"] == truth["winning_topology"], "Wrong topology winner"
@@ -157,15 +173,15 @@ def main():
                 )
                 coef = list(map(Fraction, selected["coefficients_exact"]))
                 errors = [
-                    predict(topo, r["bits"], selected["indices"], coef)  # noqa: F405
+                    predict(topo, r["bits"], selected["indices"], coef)
                     - Fraction(str(r["energy_eV"]))
                     for r in holdout
                     if r["topology_id"] == name
                 ]
-                close(rmse(errors), 0)  # noqa: F405
+                close(rmse(errors), 0)
                 if case == "higher_order":
                     expect_error(
-                        lambda: compile_pair_qubo(topo, coef),  # noqa: B023, F405
+                        functools.partial(compile_pair_qubo, topo, coef),
                         "UNSUPPORTED_HIGHER_ORDER_WITHOUT_QUADRATIZATION",
                     )
                 elif mode == "none":
@@ -174,9 +190,9 @@ def main():
                     scored = []
                     for bits in product((0, 1), repeat=12):
                         direct = (
-                            predict(topo, bits, selected["indices"], coef) + (sum(bits) - 6) ** 2  # noqa: F405
+                            predict(topo, bits, selected["indices"], coef) + (sum(bits) - 6) ** 2
                         )
-                        q = evaluate_qubo(qubo, bits)  # noqa: F405
+                        q = evaluate_qubo(qubo, bits)
                         close(q, direct)
                         scored.append((q, bits))
                     qmin = min(e for e, b in scored)
@@ -188,24 +204,27 @@ def main():
             checks.append(
                 case + " / " + mode + ": selection, untouched holdout, pool and exhaustive minima"
             )
-    invalid = read_json(ROOT / "harness/negative_inputs.json")  # noqa: F405
+    invalid = read_json(ROOT / "harness/negative_inputs.json")
     for row in invalid["occupation_cases"]:
-        expect_error(lambda: validate_bits(row["bits"]), row["expected_error"])  # noqa: B023, F405
-    sample = read_jsonl(ROOT / "data/core_pairwise_training.jsonl")[0]  # noqa: F405
+        expect_error(functools.partial(validate_bits, row["bits"]), row["expected_error"])
+    sample = read_jsonl(ROOT / "data/core_pairwise_training.jsonl")[0]
     for mutation in invalid["energy_mutations"]:
         changed = deepcopy(sample)
         changed[mutation["field"]] = mutation["value"]
         expect_error(
-            lambda: check_energy_compatibility([sample, changed]), mutation["expected_error"]  # noqa: B023, F405
+            functools.partial(check_energy_compatibility, [sample, changed]),
+            mutation["expected_error"],
         )
-    expect_error(lambda: check_energy_compatibility([]), "EMPTY_ENERGY_SET")  # noqa: F405
+    expect_error(lambda: check_energy_compatibility([]), "EMPTY_ENERGY_SET")
     for row in invalid["normalization_cases"]:
         close(
-            normalize_cell_energy(row["total_energy_eV"], row["n_formula_units"]),  # noqa: F405
+            normalize_cell_energy(row["total_energy_eV"], row["n_formula_units"]),
             row["expected_normalized_eV"],
         )
     for units in (0, -1, 1.5, True):
-        expect_error(lambda: normalize_cell_energy(-0.1, units), "INVALID_FORMULA_UNIT_COUNT")  # noqa: B023, F405
+        expect_error(
+            functools.partial(normalize_cell_energy, -0.1, units), "INVALID_FORMULA_UNIT_COUNT"
+        )
     checks.append("Negative inputs, fidelity separation, failed jobs, unit/normalization checks")
     summary = {
         "status": "PASS",
@@ -229,7 +248,7 @@ def main():
             "live literature review",
         ],
     }
-    write_json(ROOT / "reference_outputs/verification.json", summary)  # noqa: F405
+    write_json(ROOT / "reference_outputs/verification.json", summary)
     print(json.dumps(summary, indent=2))
 
 

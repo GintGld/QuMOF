@@ -77,7 +77,7 @@ def test_design_contract_rejects_invalid_or_constant_hamiltonians():
     assert codes(design(("length_balance", ["topological"], "not_applicable"))) == set()
     same_length = {
         **packet,
-        "linkers": [{**l, "characteristic_length_A": 3.0} for l in packet["linkers"]],  # noqa: E741
+        "linkers": [{**linker, "characteristic_length_A": 3.0} for linker in packet["linkers"]],
     }
     balance = design(("length_balance", ["topological", "second_neighbor"], "not_applicable"))
     assert {e["code"] for e in validate_design(balance, same_length)["errors"]} == {

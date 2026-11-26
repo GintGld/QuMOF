@@ -25,7 +25,8 @@ def namelist_value(text, key, default=None):
 
 def main():
     path = sys.argv[sys.argv.index("-in") + 1]
-    text = open(path).read()  # noqa: SIM115
+    with open(path) as fh:
+        text = fh.read()
     modes = set(filter(None, os.environ.get("MOCK_PW_MODE", "").split(",")))
     if "crash" in modes:
         sys.exit("mock pw.x: simulated crash")
@@ -37,7 +38,10 @@ def main():
     lattice = [[float(x) for x in lines[i + k].split()] for k in (1, 2, 3)]
     j = lines.index("ATOMIC_POSITIONS angstrom")
     nat = int(namelist_value(text, "nat", ""))  # missing key -> ValueError
-    atoms = [(l.split()[0], [float(x) for x in l.split()[1:4]]) for l in lines[j + 1 : j + 1 + nat]]  # noqa: E741
+    atoms = [
+        (line.split()[0], [float(x) for x in line.split()[1:4]])
+        for line in lines[j + 1 : j + 1 + nat]
+    ]
 
     out = [
         "     Program PWSCF v.7.2 starts on  1Jan2026 at  0: 0: 0",

@@ -252,8 +252,8 @@ def gather_datasets(spec, controls, report: dict, pipeline_dir, candidates: list
             continue
         rows, pinned = ds.rows(), set(cfg.get("pinned") or [])
 
-        def is_pinned(r):
-            return r["row_id"] in pinned or (r["name"] or "").split("_")[0] in pinned  # noqa: B023
+        def is_pinned(r, pinned=pinned):
+            return r["row_id"] in pinned or (r["name"] or "").split("_")[0] in pinned
 
         found = {
             p

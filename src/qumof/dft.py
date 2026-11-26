@@ -130,11 +130,13 @@ class QuantumEspressoAdapter:
     # TODO: k-point convergence of energy differences (only the basis cutoff is converged now).
     engine, name = "quantum_espresso", "quantum_espresso_pw"
     required = ("pseudo_dir", "pseudopotentials", "ecutwfc_Ry", "ecutrho_Ry", "conv_thr_Ry")
-    retry_keys = {  # noqa: RUF012
-        "mixing_beta",
-        "mixing_mode",
-        "electron_maxstep",
-    }  # anything else changes the science
+    retry_keys = frozenset(
+        {
+            "mixing_beta",
+            "mixing_mode",
+            "electron_maxstep",
+        }
+    )  # anything else changes the science
     cutoff_key, energy_unit, energy_to_eV = "ecutwfc_Ry", "Ry", RY_TO_EV
     conventions = ("total_energy_as_printed",)
     input_name, output_name = "pw.in", "pw.out"
@@ -245,7 +247,7 @@ class QuantumEspressoAdapter:
             )
         out = []
         for name, lines in blocks:
-            out += [f"&{name}"] + [f"  {l}" for l in lines] + ["/"]  # noqa: E741
+            out += [f"&{name}"] + [f"  {line}" for line in lines] + ["/"]
         out.append("ATOMIC_SPECIES")
         out += [
             f"  {el} {ATOMIC_MASSES[el]} {protocol['pseudopotentials'][el]['file']}"
@@ -341,7 +343,7 @@ class QuantumEspressoAdapter:
                 r"ATOMIC_POSITIONS \((\w+)\)\s*\n(.*?)End final coordinates", final, re.S
             )
             if pos:
-                rows = [l.split() for l in pos.group(2).strip().splitlines() if l.strip()]  # noqa: E741
+                rows = [line.split() for line in pos.group(2).strip().splitlines() if line.strip()]
                 elements = [r[0] for r in rows]
                 xyz = [tuple(float(x) for x in r[1:4]) for r in rows]
                 if pos.group(1) == "angstrom":
@@ -382,7 +384,7 @@ class PySCFAdapter:
         "precision",
         "max_memory_MB",
     )
-    retry_keys = {"damp", "level_shift", "diis_space", "diis_start_cycle", "max_cycle"}  # noqa: RUF012
+    retry_keys = frozenset({"damp", "level_shift", "diis_space", "diis_start_cycle", "max_cycle"})
     cutoff_key, energy_unit, energy_to_eV = "ke_cutoff_Ha", "Ha", HARTREE_TO_EV
     conventions = ("internal_energy", "free_energy", "zero_temperature_extrapolated")
     input_name, output_name = "job.json", "result.json"

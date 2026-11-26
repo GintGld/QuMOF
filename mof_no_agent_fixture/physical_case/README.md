@@ -2,7 +2,7 @@
 
 This directory contains a **recipe, not executable atomic input data**. Its purpose is to define a manageable next step after the synthetic integration fixture passes.
 
-Use a MOF-5/IRMOF-1 parent framework with Zn4O nodes, BDC and 2-amino-BDC linkers, and a chosen 1:1 linker ratio. A primary report describes this mixed-linker material family: [Postsynthetic modification of mixed-linker metal–organic frameworks for ethylene oligomerization](https://pubs.rsc.org/en/content/articlehtml/2014/ra/c4ra10605a), DOI 10.1039/C4RA10605A. It supports the material-family choice, not the synthetic energies or a claim that the selected 50:50 composition was experimentally incorporated. Exclude the paper's subsequent Ni-functionalization step from this proposed initial case.
+Use a MOF-5/IRMOF-1 parent framework with Zn4O nodes, BDC and 2-amino-BDC linkers, and a chosen 1:1 linker ratio. A primary report describes this mixed-linker material family: [Postsynthetic modification of mixed-linker metal-organic frameworks for ethylene oligomerization](https://pubs.rsc.org/en/content/articlehtml/2014/ra/c4ra10605a), DOI 10.1039/C4RA10605A. It supports the material-family choice, not the synthetic energies or a claim that the selected 50:50 composition was experimentally incorporated. Exclude the paper's subsequent Ni-functionalization step from this proposed initial case.
 
 Before running it:
 

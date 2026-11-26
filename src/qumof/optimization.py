@@ -196,7 +196,10 @@ def branch_and_bound(
         best is not None
     )  # FIXME maybe do something with algorithm to guarantee that `best` is not None
     lower = min([best, *open_bounds])
-    to_ev = lambda v: Fraction(v, scale * max_deg)  # noqa: E731
+
+    def to_ev(v):
+        return Fraction(v, scale * max_deg)
+
     bits = [best_bits >> i & 1 for i in range(n)]
     energy = predict(
         hamiltonian, topo, bits

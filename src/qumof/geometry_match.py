@@ -93,7 +93,7 @@ def equivalent(
     ):
         return False
     lattice = g1["lattice_A"]
-    bins = [max(1, int(l / max(2 * tol_A, 1.0))) for l in l1]  # noqa: E741
+    bins = [max(1, int(length / max(2 * tol_A, 1.0))) for length in l1]
     grid = {}
     for idx, (el, f) in enumerate(zip(g1["elements"], g1["frac_coords"], strict=False)):
         key = (el, *tuple(int(f[k] % 1.0 * bins[k]) % bins[k] for k in range(3)))

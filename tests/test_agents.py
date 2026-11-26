@@ -562,7 +562,7 @@ def test_literature_resolves_aliases_strictly_and_ranks_local_full_text(tmp_path
         {"alias": "Kang", "title": KANG["title"], "doi": KANG["doi"]},
         {
             "alias": "Cai",
-            "title": "Control of Metal–Organic Framework Crystal Topology by Ligand Functionalization",  # noqa: RUF001
+            "title": "Control of Metal-Organic Framework Crystal Topology by Ligand Functionalization",
             "doi": "10.1021/cg501285q",
         },
         {"alias": "Rocca", "arxiv_id": "2510.02550"},

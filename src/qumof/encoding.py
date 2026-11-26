@@ -295,7 +295,10 @@ def compile_one_hot(n_sites: int, n_species: int, physical: dict, counts: list, 
     per site, and the declared counts. Penalty: lambda * (sum of squared violations of both families).
     """
     weight = Fraction(str(weight))
-    var = lambda i, a: i * n_species + a  # noqa: E731
+
+    def var(i, a):
+        return i * n_species + a
+
     poly: dict = {}
     for key, c in physical.items():
         poly = poly_add(poly, {tuple(sorted(var(i, a) for i, a in key)): Fraction(str(c))})

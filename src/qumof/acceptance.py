@@ -25,9 +25,9 @@ def check_run(spec, report: dict) -> dict:
         (root / f"reference_outputs/{spec.case}_{spec.correction_mode}.json").read_text()
     )
     holdout = [
-        json.loads(l)
-        for l in (root / f"harness/{spec.case}_holdout.jsonl").read_text().splitlines()  # noqa: E741
-        if l.strip()
+        json.loads(line)
+        for line in (root / f"harness/{spec.case}_holdout.jsonl").read_text().splitlines()
+        if line.strip()
     ]
     checks = []
 

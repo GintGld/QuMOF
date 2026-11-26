@@ -169,21 +169,23 @@ class ValencyMCP:
             http, transport = None, streamablehttp_client(self.url, headers=headers)
         out = []
         try:
-            async with transport as streams:  # noqa: SIM117
-                async with ClientSession(streams[0], streams[1]) as session:
-                    await session.initialize()
-                    for name, arguments in calls:
-                        try:
-                            result = await session.call_tool(
-                                name,
-                                arguments,
-                                read_timeout_seconds=timedelta(seconds=self.timeout),
-                            )
-                            out.append(_parse_tool_result(result))
-                        except (
-                            Exception
-                        ) as exc:  # one failed call is a retrieval gap, not a run failure
-                            out.append(exc)
+            async with (
+                transport as streams,
+                ClientSession(streams[0], streams[1]) as session,
+            ):
+                await session.initialize()
+                for name, arguments in calls:
+                    try:
+                        result = await session.call_tool(
+                            name,
+                            arguments,
+                            read_timeout_seconds=timedelta(seconds=self.timeout),
+                        )
+                        out.append(_parse_tool_result(result))
+                    except (
+                        Exception
+                    ) as exc:  # one failed call is a retrieval gap, not a run failure
+                        out.append(exc)
         finally:
             if http is not None:
                 await http.aclose()

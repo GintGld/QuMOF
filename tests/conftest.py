@@ -7,18 +7,18 @@ from pathlib import Path
 
 import pytest
 
+from qumof.intake import load_project
+from qumof.orchestrator import run_pipeline
+
 REPO = Path(__file__).resolve().parents[1]
 FIXTURE = REPO / "mof_no_agent_fixture"
 PROJECT = FIXTURE / "project.json"
 CASES = ("core_pairwise", "higher_order")
 MODES = ("none", "constant", "topology_dependent")
 
-from qumof.intake import load_project  # noqa: E402
-from qumof.orchestrator import run_pipeline  # noqa: E402
-
 
 def read_jsonl(path):
-    return [json.loads(l) for l in Path(path).read_text().splitlines() if l.strip()]  # noqa: E741
+    return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
 
 
 def harness_json(rel):

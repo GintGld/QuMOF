@@ -63,7 +63,7 @@ def toy_cif(ops=None, extra_atoms=(), occupancy_h=1.0, shuffle=False):
         "_atom_site_fract_z",
         "_atom_site_occupancy",
     ]
-    lines += [f"{l} {e} {x:.6f} {y:.6f} {z:.6f} {o}" for l, e, x, y, z, o in atoms]  # noqa: E741
+    lines += [f"{label} {e} {x:.6f} {y:.6f} {z:.6f} {o}" for label, e, x, y, z, o in atoms]
     return "\n".join(lines) + "\n"
 
 
@@ -313,7 +313,9 @@ def staggered_cif():
     lines = toy_cif().splitlines()
     head = lines[: lines.index("_atom_site_occupancy") + 1]
     return (
-        "\n".join(head + [f"{l} {e} {x:.6f} {y:.6f} {z:.6f} {o}" for l, e, x, y, z, o in atoms])  # noqa: E741
+        "\n".join(
+            head + [f"{label} {e} {x:.6f} {y:.6f} {z:.6f} {o}" for label, e, x, y, z, o in atoms]
+        )
         + "\n"
     )
 

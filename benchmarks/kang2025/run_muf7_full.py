@@ -106,7 +106,6 @@ def zn4o_cluster(atoms) -> dict:
     nl = NeighborList(natural_cutoffs(atoms, mult=1.15), self_interaction=False, bothways=True)  # pyright: ignore[reportArgumentType]  # ase annotates mult as int; it is a float scale factor
     nl.update(atoms)
     sym = atoms.get_chemical_symbols()
-    [i for i, s in enumerate(sym) if s == "Zn"]
 
     def nb(i):
         return nl.get_neighbors(i)
@@ -131,7 +130,7 @@ def zn4o_cluster(atoms) -> dict:
     add(mu4, ref)
     o_carb, c_carb = {}, {}
     for z in zns:
-        _zi, zoff = nb(mu4)[0].tolist().index(z), nb(mu4)[1][nb(mu4)[0].tolist().index(z)]
+        zoff = nb(mu4)[1][nb(mu4)[0].tolist().index(z)]
         zp = pos(z, zoff)
         add(z, zp)
         for o, ooff in zip(*nb(z), strict=False):
@@ -392,8 +391,8 @@ def main(argv=None) -> int:
         rs = [x for x in scored if x["model"] == model]
         ok = [x for x in rs if "top1" in x]
 
-        def f(k):
-            return f"{sum(bool(x[k]) for x in ok)}/{len(rs)}"  # noqa: B023
+        def f(k, ok=ok, rs=rs):
+            return f"{sum(bool(x[k]) for x in ok)}/{len(rs)}"
 
         sp = [
             x["spearman_qubo_vs_orb_top_k"]
@@ -403,7 +402,7 @@ def main(argv=None) -> int:
         lines.append(
             f"| {model} | {len(rs)} | {len(ok)} | {f('qubo_ground_is_experimental')} | {f('experimental_in_top_k')} | "
             f"{f('orb_lowest_is_experimental')} | {f('top1_is_orb_lowest_of_top_k')} | "
-            f"{(sum(sp) / len(sp)) if sp else '–'} | {sum(x['cost_usd'] or 0 for x in rs):.4f} |"  # noqa: RUF001
+            f"{(sum(sp) / len(sp)) if sp else '-'} | {sum(x['cost_usd'] or 0 for x in rs):.4f} |"
         )
     lines += ["", "## orb-v3 energies (eV per cell, lowest first)", ""] + [
         f"- `{s}` {e[s]:.3f}{'  ← experimental' if s in reference else ''}" for s in ordered

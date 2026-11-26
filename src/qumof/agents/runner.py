@@ -629,9 +629,9 @@ def build_graph(nodes: dict, routes: dict, engine: str = "auto"):
     if engine in ("auto", "langgraph"):
         try:
             from langgraph.graph import END, START, StateGraph
-        except ImportError:
+        except ImportError as exc:
             if engine == "langgraph":
-                raise PipelineError("LANGGRAPH_NOT_INSTALLED", "pip install -e .[agents]")  # noqa: B904
+                raise PipelineError("LANGGRAPH_NOT_INSTALLED", "pip install -e .[agents]") from exc
         else:
             graph = StateGraph(AgentState)
             for name, fn in nodes.items():

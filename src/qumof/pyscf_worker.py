@@ -445,7 +445,7 @@ def _relax(job: dict, evaluator: Evaluator, log):
     trajectory, last = [], {}
 
     class PySCFCalculator(Calculator):
-        implemented_properties = ["energy", "free_energy", "forces", "stress"]  # noqa: RUF012
+        implemented_properties = ["energy", "free_energy", "forces", "stress"]  # noqa: RUF012 - ASE's base class declares a plain list
 
         def calculate(self, atoms=None, properties=("energy",), system_changes=all_changes):
             super().calculate(atoms, properties, system_changes)

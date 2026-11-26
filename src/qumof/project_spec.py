@@ -159,18 +159,18 @@ def spec_from_recipe(recipe: dict) -> dict:
             "license": None,
         }
     ]
-    for _i, l in enumerate(recipe["swappable_linkers"]):  # noqa: E741
+    for linker in recipe["swappable_linkers"]:
         blocks.append(
             {
-                "id": l["id"],
+                "id": linker["id"],
                 "role": "linker",
                 "slot_type": "linker",
-                "formula": parse_formula(l["formula"]),
-                "formal_charge": l["formal_charge"],
+                "formula": parse_formula(linker["formula"]),
+                "formal_charge": linker["formal_charge"],
                 "connectivity": 2,
                 "n_connector_atoms": None,
-                "smiles": l.get("smiles"),
-                "geometry_file": l.get("geometry_file"),
+                "smiles": linker.get("smiles"),
+                "geometry_file": linker.get("geometry_file"),
                 "substitution": None,
                 "source": recipe.get("source_doi"),
                 "license": None,
@@ -900,7 +900,7 @@ def validate_physical_project(spec) -> dict:
     for e in errors:
         checks.append({"check": e["check"], "passed": False})
     if not errors:
-        for tid, topo in spec.topologies.items():  # noqa: B007
+        for topo in spec.topologies.values():
             local_checks, local_errors = topology_checks(spec, topo)
             checks += local_checks
             errors += local_errors
@@ -938,7 +938,7 @@ def validate_physical_project(spec) -> dict:
                             f"{[n for n in names if not is_transferable(n)]}",
                         )
                     )
-        for tid, cells in transfers.items():  # noqa: B007
+        for cells in transfers.values():
             for cell in cells:
                 local_checks, local_errors = topology_checks(spec, cell)
                 checks += local_checks

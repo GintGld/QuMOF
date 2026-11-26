@@ -102,7 +102,9 @@ def _weight(term: dict, edge: dict) -> float:
 
 def compile_design(design: dict, packet: dict) -> dict:
     """Binary polynomial {sites tuple: coefficient} (x_i = 1: second linker) from the chosen terms."""
-    (a, la), (b, lb) = [(l["id"], l["characteristic_length_A"]) for l in packet["linkers"]]  # noqa: E741
+    (a, la), (b, lb) = [
+        (linker["id"], linker["characteristic_length_A"]) for linker in packet["linkers"]
+    ]
     n, counts = packet["sites"]["n_sites"], packet["composition"]
     lbar = 2 * (counts[a] * la + counts[b] * lb) / n
     poly: dict = {}
@@ -290,7 +292,7 @@ def fake_device(
 def kang_spectrum(material: dict, packet: dict) -> dict:
     """The paper's Hamiltonian on every fixed-composition state (ratio/occupancy terms vanish there)."""
     ref = material["reference"]["kang_hamiltonian"]
-    lengths = [l["characteristic_length_A"] for l in packet["linkers"]]  # noqa: E741
+    lengths = [linker["characteristic_length_A"] for linker in packet["linkers"]]
     out = {}
     for s in feasible_states(packet):
         Ls = [
@@ -560,7 +562,7 @@ def _mean(values: list):
 
 
 def _fmt(value, spec=".3f") -> str:
-    return "–" if value is None else format(value, spec)  # noqa: RUF001
+    return "-" if value is None else format(value, spec)
 
 
 def render(rows: list, materials: list, baseline: dict | None = None) -> str:
@@ -606,10 +608,10 @@ def render(rows: list, materials: list, baseline: dict | None = None) -> str:
     if baseline:
         maes = ", ".join(f"{mat} {_fmt(b['mae'], '.1f')}" for mat, b in sorted(baseline.items()))
         lines.append(
-            f"| random catalogue design (baseline, {next(iter(baseline.values()))['n']} per material) | – | – | "  # noqa: RUF001
+            f"| random catalogue design (baseline, {next(iter(baseline.values()))['n']} per material) | - | - | "
             f"{_fmt(_mean([b['reproduced_rate'] for b in baseline.values()]), '.0%')} | "
             f"{_fmt(_mean([b['nmae'] for b in baseline.values()]))} | "
-            f"{_fmt(_mean([b['spearman'] for b in baseline.values()]))} | {maes} | – | – |"  # noqa: RUF001
+            f"{_fmt(_mean([b['spearman'] for b in baseline.values()]))} | {maes} | - | - |"
         )
     lines += [
         "",

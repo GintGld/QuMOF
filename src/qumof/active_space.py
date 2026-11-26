@@ -118,7 +118,8 @@ def prepare_active_space(system: dict, protocol: dict) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, "FCIDUMP")
         fcidump.from_integrals(path, h1, h2, ncas, (nalpha, nbeta), nuc=ecore, ms=ms2, tol=1e-15)
-        text = open(path).read()  # noqa: SIM115
+        with open(path) as fh:
+            text = fh.read()
     # Orbital character: Mulliken weight of every atom in each active orbital.
     s = mol.intor("int1e_ovlp")
     active = mo[:, mc.ncore : mc.ncore + ncas]

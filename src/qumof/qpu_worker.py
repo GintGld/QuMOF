@@ -30,12 +30,12 @@ def _scs(qc, q: list, n: int, k: int) -> None:
     qc.cx(q[n - 2], q[n - 1])
     qc.cry(2 * math.acos(math.sqrt(1 / n)), q[n - 1], q[n - 2])
     qc.cx(q[n - 2], q[n - 1])
-    for l in range(2, k + 1):  # noqa: E741
-        qc.cx(q[n - l - 1], q[n - 1])
+    for i in range(2, k + 1):
+        qc.cx(q[n - i - 1], q[n - 1])
         qc.append(
-            RYGate(2 * math.acos(math.sqrt(l / n))).control(2), [q[n - 1], q[n - l], q[n - l - 1]]
+            RYGate(2 * math.acos(math.sqrt(i / n))).control(2), [q[n - 1], q[n - i], q[n - i - 1]]
         )
-        qc.cx(q[n - l - 1], q[n - 1])
+        qc.cx(q[n - i - 1], q[n - 1])
 
 
 def dicke(n: int, k: int):
@@ -85,7 +85,8 @@ def main(argv) -> int:
     from qiskit.quantum_info import Statevector
     from qiskit_aer import AerSimulator
 
-    job = json.loads(open(argv[0]).read())  # noqa: SIM115
+    with open(argv[0]) as fh:
+        job = json.load(fh)
     backend = _device(job["device"])
     simulator = AerSimulator.from_backend(backend)
     identity = {
@@ -134,7 +135,8 @@ def main(argv) -> int:
                 "wall_time_s": round(time.perf_counter() - t0, 3),
             }
         )
-    json.dump({"identity": identity, "runs": runs}, open("result.json", "w"))  # noqa: SIM115
+    with open("result.json", "w") as fh:
+        json.dump({"identity": identity, "runs": runs}, fh)
     return 0
 
 

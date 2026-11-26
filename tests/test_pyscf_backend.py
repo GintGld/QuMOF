@@ -13,19 +13,19 @@ import os
 import sys
 from fractions import Fraction
 
+import numpy as np
 import pytest
+from pyscf_toy import write_pyscf_toy_project
+
+from qumof import dft
+from qumof import pyscf_worker as worker
+from qumof.intake import load_project, validate_project
+from qumof.orchestrator import run_pipeline
+from qumof.store import RunStore
 
 pytest.importorskip("pyscf")
 pytest.importorskip("pyscf.dispersion")
 pytestmark = pytest.mark.pyscf
-import numpy as np  # noqa: E402
-from pyscf_toy import write_pyscf_toy_project  # noqa: E402
-
-from qumof import dft  # noqa: E402
-from qumof import pyscf_worker as worker  # noqa: E402
-from qumof.intake import load_project, validate_project  # noqa: E402
-from qumof.orchestrator import run_pipeline  # noqa: E402
-from qumof.store import RunStore  # noqa: E402
 
 SI_A = 5.43
 SI_LATTICE = [[0.0, SI_A / 2, SI_A / 2], [SI_A / 2, 0.0, SI_A / 2], [SI_A / 2, SI_A / 2, 0.0]]

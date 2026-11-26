@@ -54,7 +54,9 @@ type Loop = tuple[list[str], list[Token]]
 def _parse_items(text: str) -> tuple[dict, list[Loop]]:
     """Return (scalar items, loops). Loops are (column names, rows of tokens)."""
     items, loops = {}, []
-    lines = [l for l in text.splitlines() if l.strip() and not l.lstrip().startswith("#")]  # noqa: E741
+    lines = [
+        line for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")
+    ]
     i = 0
     while i < len(lines):
         line = lines[i].strip()
@@ -297,7 +299,7 @@ def write_cif(
         "_atom_site_occupancy",
     ]
     out += [
-        f"{l} {e} {f[0]:.6f} {f[1]:.6f} {f[2]:.6f} 1.0"
-        for l, e, f in zip(labels, elements, frac_coords, strict=False)  # noqa: E741
+        f"{label} {e} {f[0]:.6f} {f[1]:.6f} {f[2]:.6f} 1.0"
+        for label, e, f in zip(labels, elements, frac_coords, strict=False)
     ]
     return "\n".join(out) + "\n"

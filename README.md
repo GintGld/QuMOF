@@ -1,4 +1,4 @@
-# QuMOF: LLM-assisted energy-grounded quantum–classical design of multivariate MOFs
+# QuMOF: LLM-assisted energy-grounded quantum-classical design of multivariate MOFs
 
 <h1 align="center">
     <img width="800" height="auto" src="https://github.com/user-attachments/assets/d6b6932d-a1e3-4c09-b88d-d0a70e9386c0" />
@@ -9,7 +9,7 @@
 
 Dmitrii Zhiganov, Matvei Anoshin, Gintaras Gliaudelis
 
-QuMOF predicts how linkers arrange in multivariate metal–organic frameworks (MTV-MOFs), starting from a plain-text design brief. LLM agents choose topologies and Hamiltonian forms, a DFT-fitted QUBO is solved by simulated annealing and composition-preserving QAOA, and the best structures are ranked by periodic DFT with quantum-embedded corrections at the metal nodes.
+QuMOF predicts how linkers arrange in multivariate metal-organic frameworks (MTV-MOFs), starting from a plain-text design brief. LLM agents choose topologies and Hamiltonian forms, a DFT-fitted QUBO is solved by simulated annealing and composition-preserving QAOA, and the best structures are ranked by periodic DFT with quantum-embedded corrections at the metal nodes.
 
 ## Approach
 
@@ -75,7 +75,7 @@ Install the optional extras you need:
 
 | Extra | Enables | Main packages |
 |---|---|---|
-| `agents` | AI agents A1–A4, literature and database lookup | requests, jsonschema, langgraph, mcp, pandas, h5py |
+| `agents` | AI agents A1-A4, literature and database lookup | requests, jsonschema, langgraph, mcp, pandas, h5py |
 | `mlip` | ML-potential screening and relaxation | orb-models |
 | `topology` | building frameworks from PORMAKE nets and blocks | pormake |
 | `qpu` | QAOA on fake IBM devices | qiskit, qiskit-aer, qiskit-ibm-runtime |
@@ -220,8 +220,8 @@ PYTHONPATH=src python -m qumof agents-design-bench \
 ```
 
 The control run reproduces the paper's energy spectrum for all three materials (Spearman ρ = 1.000). With that
-Hamiltonian, QAOA samples the experimental arrangement with a median probability of 0.25–0.49. A uniform random pick
-among arrangements with the right composition gives 0.03–0.10. Results land in `runs/kang2025_design/results.md`. The
+Hamiltonian, QAOA samples the experimental arrangement with a median probability of 0.25-0.49. A uniform random pick
+among arrangements with the right composition gives 0.03-0.10. Results land in `runs/kang2025_design/results.md`. The
 fourth material in the paper, SIOC-COF2, is not included, because its graph could not be reconstructed.
 
 #### MUF-7 with real structures
@@ -321,8 +321,8 @@ An agent run adds `agent/` (the agents' inputs, answers and request ledger), `pi
 | 5 | cluster embedding | `embedding.py`, `cluster_worker.py` |
 | 5 | refinement rounds | `refinement.py`, `orchestrator.py` |
 | 5 | ranking, reference phases, structural checks, report | `ranking.py`, `references.py`, `validation.py`, `report.py` |
-| A1–A4 | validation of agent answers | `gateway.py` |
-| A1–A4 | agent runtime | `agents/` |
+| A1-A4 | validation of agent answers | `gateway.py` |
+| A1-A4 | agent runtime | `agents/` |
 | — | AiiDA engine, run storage | `aiida_engine.py`, `store.py` |
 
 Step numbers refer to the list in [Approach](#approach).

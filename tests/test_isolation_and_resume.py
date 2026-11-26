@@ -75,7 +75,7 @@ def test_rerun_reuses_every_stage_and_never_resubmits(tmp_path):
     )
     assert first["artifact_id"] == second["artifact_id"]
     assert _state(tmp_path / "run")["counters"]["evaluator_submissions"] == 1
-    events = [json.loads(l) for l in (tmp_path / "run/events.jsonl").read_text().splitlines()]  # noqa: E741
+    events = [json.loads(line) for line in (tmp_path / "run/events.jsonl").read_text().splitlines()]
     assert sum(e["event"] == "stage_reused" for e in events) == len(STAGES)
 
 

@@ -114,14 +114,14 @@ class SyntheticFixtureBackend:
             raise PipelineError("JOB_FAILED", f"{job_id}: {meta.get('stderr', '')[:200]}")
         job_dir = self.store.jobs / job_id.replace(":", "__")
         requests = [
-            json.loads(l)
-            for l in (job_dir / "requests.jsonl").read_text().splitlines()  # noqa: E741
-            if l.strip()
+            json.loads(line)
+            for line in (job_dir / "requests.jsonl").read_text().splitlines()
+            if line.strip()
         ]
         responses = [
-            json.loads(l)
-            for l in (job_dir / "responses.jsonl").read_text().splitlines()  # noqa: E741
-            if l.strip()
+            json.loads(line)
+            for line in (job_dir / "responses.jsonl").read_text().splitlines()
+            if line.strip()
         ]
         if len(responses) != len(requests):
             raise PipelineError("RESPONSE_COUNT_MISMATCH", f"{len(responses)} != {len(requests)}")

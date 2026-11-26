@@ -82,7 +82,8 @@ def energy(item):
 
 def main(argv):
     probe = argv[0] == "--probe"
-    batch = json.load(open(argv[-1]))  # noqa: SIM115
+    with open(argv[-1]) as fh:
+        batch = json.load(fh)
     identity = {
         "engine": "mock",
         "model": batch["protocol"]["model"],
@@ -90,7 +91,8 @@ def main(argv):
         "worker_version": "mock",
     }
     if probe:
-        json.dump({"identity": identity}, open("probe.json", "w"))  # noqa: SIM115
+        with open("probe.json", "w") as fh:
+            json.dump({"identity": identity}, fh)
         return 0
     results = {}
     for item in batch["structures"]:
@@ -109,7 +111,8 @@ def main(argv):
             "wall_time_s": 0.0,
             "relaxed": {k: item[k] for k in ("lattice_A", "elements", "frac_coords")},
         }
-    json.dump({"identity": identity, "results": results}, open("results.json", "w"))  # noqa: SIM115
+    with open("results.json", "w") as fh:
+        json.dump({"identity": identity, "results": results}, fh)
     return 0
 
 

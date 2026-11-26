@@ -194,7 +194,7 @@ def _uccsd_generators(norb: int, nelec, dets: list):
             if res and res[1] in index:
                 t[index[res[1]], k] = res[0]
         gens.append(t - t.T)
-    return gens, excitations
+    return gens
 
 
 def vqe_simulation(artifact: dict, seed: int = 0, max_iterations: int = 200) -> dict:
@@ -208,7 +208,7 @@ def vqe_simulation(artifact: dict, seed: int = 0, max_iterations: int = 200) -> 
     hf = sum(1 << (2 * p) for p in range(nelec[0])) | sum(1 << (2 * p + 1) for p in range(nelec[1]))
     reference = np.zeros(len(dets))
     reference[dets.index(hf)] = 1.0
-    gens, _excitations = _uccsd_generators(norb, nelec, dets)
+    gens = _uccsd_generators(norb, nelec, dets)
     calls = {"n": 0}
 
     def state(theta):
@@ -288,7 +288,7 @@ def sqd_simulation(
     raw = []
     for _ in range(shots):
         x, acc = rng.random() * total, 0.0
-        for d, w in support:  # noqa: B007
+        for d, w in support:  # noqa: B007 - d is the sampled determinant, read after break
             acc += w
             if x <= acc:
                 break
