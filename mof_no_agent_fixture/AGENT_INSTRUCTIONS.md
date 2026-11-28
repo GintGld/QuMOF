@@ -70,7 +70,7 @@ Do not claim iterative active learning was verified by the bundled reference; it
 
 Use `data/literature_catalog.json` to list sources and the limited claims they support. No web search or LLM literature review is needed during this test. Set live literature review to `NOT_RUN`.
 
-Do not compare the synthetic graph energies numerically with published Kang, Cai or Fe–MOF-74 results. Those are separate scientific benchmarks requiring their own structures, compositions, Hamiltonians and calculation protocols. Do not fabricate experimental agreement or citations.
+Do not compare the synthetic graph energies numerically with published Kang, Cai or Fe-MOF-74 results. Those are separate scientific benchmarks requiring their own structures, compositions, Hamiltonians and calculation protocols. Do not fabricate experimental agreement or citations.
 
 Report structural stability, topology confirmation from atomic coordinates, MOFChecker, Zeo++, PXRD and NMR comparison as skipped in this fixture. No finite-temperature stage should be added.
 

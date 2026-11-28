@@ -5,8 +5,8 @@ CIF, expands the asymmetric unit to P1 and reports partial occupancy and
 disorder instead of resolving them silently. The original text and its SHA-256
 are kept with every parse.
 """
+
 from __future__ import annotations
-from typing import TypeAlias
 
 import hashlib
 import math
@@ -35,8 +35,10 @@ def _leading(pattern: str, text: str, what: str) -> str:
         raise PipelineError("CIF_PARSE_ERROR", f"no {what} in {text!r}")
     return match.group(0)
 
+
 # Tokenized string
-Token: TypeAlias = list[str]
+type Token = list[str]
+
 
 def _tokens(line: str) -> list[str]:
     try:
@@ -44,13 +46,17 @@ def _tokens(line: str) -> list[str]:
     except ValueError as exc:
         raise PipelineError("CIF_PARSE_ERROR", f"{line!r}: {exc}") from exc
 
+
 # Any element of the list is (column names, rows of tokens)
-Loop: TypeAlias = tuple[list[str], list[Token]]
+type Loop = tuple[list[str], list[Token]]
+
 
 def _parse_items(text: str) -> tuple[dict, list[Loop]]:
     """Return (scalar items, loops). Loops are (column names, rows of tokens)."""
     items, loops = {}, []
-    lines = [l for l in text.splitlines() if l.strip() and not l.lstrip().startswith("#")]
+    lines = [
+        line for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")
+    ]
     i = 0
     while i < len(lines):
         line = lines[i].strip()
@@ -63,15 +69,26 @@ def _parse_items(text: str) -> tuple[dict, list[Loop]]:
                 names.append(lines[i].strip().split()[0].lower())
                 i += 1
             values = []
-            while i < len(lines) and not lines[i].strip().startswith("_") and lines[i].strip().lower() != "loop_" \
-                    and not lines[i].strip().lower().startswith("data_"):
+            while (
+                i < len(lines)
+                and not lines[i].strip().startswith("_")
+                and lines[i].strip().lower() != "loop_"
+                and not lines[i].strip().lower().startswith("data_")
+            ):
                 if lines[i].startswith(";"):
-                    raise PipelineError("CIF_PARSE_ERROR", "multi-line text fields inside loops are not supported")
+                    raise PipelineError(
+                        "CIF_PARSE_ERROR", "multi-line text fields inside loops are not supported"
+                    )
                 values.extend(_tokens(lines[i]))
                 i += 1
             if not names or len(values) % len(names):
-                raise PipelineError("CIF_PARSE_ERROR", f"loop {names[:1]} has {len(values)} values for {len(names)} columns")
-            loops.append((names, [values[k:k + len(names)] for k in range(0, len(values), len(names))]))
+                raise PipelineError(
+                    "CIF_PARSE_ERROR",
+                    f"loop {names[:1]} has {len(values)} values for {len(names)} columns",
+                )
+            loops.append(
+                (names, [values[k : k + len(names)] for k in range(0, len(values), len(names))])
+            )
             continue
         if line.startswith("_"):
             parts = _tokens(line)
@@ -168,21 +185,39 @@ def parse_cif(text: str, source: str) -> dict:
     sym_names, sym_rows = _loop_with(loops, "_space_group_symop_operation_xyz")
     if not sym_names or not sym_rows:
         sym_names, sym_rows = _loop_with(loops, "_symmetry_equiv_pos_as_xyz")
-    key = "_space_group_symop_operation_xyz" if "_space_group_symop_operation_xyz" in (sym_names or []) \
+    key = (
+        "_space_group_symop_operation_xyz"
+        if "_space_group_symop_operation_xyz" in (sym_names or [])
         else "_symmetry_equiv_pos_as_xyz"
-    ops = [parse_symop(r[sym_names.index(key)]) for r in sym_rows] if sym_rows and sym_names else [parse_symop("x,y,z")]
+    )
+    ops = (
+        [parse_symop(r[sym_names.index(key)]) for r in sym_rows]
+        if sym_rows and sym_names
+        else [parse_symop("x,y,z")]
+    )
 
     asym = []
     for row in rows:
         label = get(row, "_atom_site_label")
-        element = get(row, "_atom_site_type_symbol") or _leading(r"[A-Za-z]+", label or "", "element in atom-site label")
+        element = get(row, "_atom_site_type_symbol") or _leading(
+            r"[A-Za-z]+", label or "", "element in atom-site label"
+        )
         element = _leading(r"[A-Z][a-z]?", element.strip().capitalize(), "element symbol")
         occ_raw = get(row, "_atom_site_occupancy", "1")
         occupancy = 1.0 if occ_raw in ("?", ".") else cif_number(occ_raw)
         group = get(row, "_atom_site_disorder_group", ".")
-        frac = tuple(cif_number(get(row, f"_atom_site_fract_{k}", "")) for k in "xyz")  # missing column -> CIF_PARSE_ERROR
-        asym.append({"label": label, "element": element, "frac": frac, "occupancy": occupancy,
-                     "disorder_group": group if group not in ("?",) else "."})
+        frac = tuple(
+            cif_number(get(row, f"_atom_site_fract_{k}", "")) for k in "xyz"
+        )  # missing column -> CIF_PARSE_ERROR
+        asym.append(
+            {
+                "label": label,
+                "element": element,
+                "frac": frac,
+                "occupancy": occupancy,
+                "disorder_group": group if group not in ("?",) else ".",
+            }
+        )
 
     atoms = []
     for site in asym:
@@ -193,35 +228,78 @@ def parse_cif(text: str, source: str) -> dict:
                 images.append(f)
         for f in images:
             for other in atoms:
-                if _frac_distance(f, other["frac"]) <= POSITION_DEDUP_TOL and other["label"] != site["label"]:
-                    if other["occupancy"] >= 1 and site["occupancy"] >= 1:
-                        raise PipelineError("CIF_OVERLAPPING_SITES", f"{site['label']} / {other['label']}")
+                if (
+                    (
+                        _frac_distance(f, other["frac"]) <= POSITION_DEDUP_TOL
+                        and other["label"] != site["label"]
+                    )
+                    and other["occupancy"] >= 1
+                    and site["occupancy"] >= 1
+                ):
+                    raise PipelineError(
+                        "CIF_OVERLAPPING_SITES", f"{site['label']} / {other['label']}"
+                    )
             atoms.append({**site, "frac": f})
 
     partial = sorted({a["label"] for a in atoms if a["occupancy"] < 1.0 - 1e-6})
     disordered = sorted({a["label"] for a in atoms if a["disorder_group"] not in (".", "?")})
     return {
-        "source": source, "sha256": hashlib.sha256(text.encode()).hexdigest(), "original_text": text,
-        "cell_lengths_A": lengths, "cell_angles_deg": angles, "lattice": cell_matrix(*lengths, *angles),
-        "n_symmetry_operations": len(ops), "symmetry_operations": ops, "atoms": atoms,
-        "partial_occupancy_sites": partial, "disordered_sites": disordered,
+        "source": source,
+        "sha256": hashlib.sha256(text.encode()).hexdigest(),
+        "original_text": text,
+        "cell_lengths_A": lengths,
+        "cell_angles_deg": angles,
+        "lattice": cell_matrix(*lengths, *angles),
+        "n_symmetry_operations": len(ops),
+        "symmetry_operations": ops,
+        "atoms": atoms,
+        "partial_occupancy_sites": partial,
+        "disordered_sites": disordered,
     }
 
 
-def write_cif(name: str, lattice, elements: list, frac_coords: list, labels: list | None = None) -> str:
+def write_cif(
+    name: str, lattice, elements: list, frac_coords: list, labels: list | None = None
+) -> str:
     """P1 CIF for a built or relaxed geometry (lattice rows in angstrom)."""
     a, b, c = (math.sqrt(sum(x * x for x in v)) for v in lattice)
 
     def angle(u, v):
-        return math.degrees(math.acos(sum(x * y for x, y in zip(u, v)) / (math.sqrt(sum(x * x for x in u)) * math.sqrt(sum(x * x for x in v)))))
+        return math.degrees(
+            math.acos(
+                sum(x * y for x, y in zip(u, v, strict=False))
+                / (math.sqrt(sum(x * x for x in u)) * math.sqrt(sum(x * x for x in v)))
+            )
+        )
 
-    alpha, beta, gamma = angle(lattice[1], lattice[2]), angle(lattice[0], lattice[2]), angle(lattice[0], lattice[1])
+    alpha, beta, gamma = (
+        angle(lattice[1], lattice[2]),
+        angle(lattice[0], lattice[2]),
+        angle(lattice[0], lattice[1]),
+    )
     labels = labels or [f"{e}{i + 1}" for i, e in enumerate(elements)]
-    out = [f"data_{name}", "_symmetry_space_group_name_H-M 'P 1'",
-           f"_cell_length_a {a:.6f}", f"_cell_length_b {b:.6f}", f"_cell_length_c {c:.6f}",
-           f"_cell_angle_alpha {alpha:.6f}", f"_cell_angle_beta {beta:.6f}", f"_cell_angle_gamma {gamma:.6f}",
-           "loop_", "_space_group_symop_operation_xyz", "'x,y,z'",
-           "loop_", "_atom_site_label", "_atom_site_type_symbol", "_atom_site_fract_x", "_atom_site_fract_y",
-           "_atom_site_fract_z", "_atom_site_occupancy"]
-    out += [f"{l} {e} {f[0]:.6f} {f[1]:.6f} {f[2]:.6f} 1.0" for l, e, f in zip(labels, elements, frac_coords)]
+    out = [
+        f"data_{name}",
+        "_symmetry_space_group_name_H-M 'P 1'",
+        f"_cell_length_a {a:.6f}",
+        f"_cell_length_b {b:.6f}",
+        f"_cell_length_c {c:.6f}",
+        f"_cell_angle_alpha {alpha:.6f}",
+        f"_cell_angle_beta {beta:.6f}",
+        f"_cell_angle_gamma {gamma:.6f}",
+        "loop_",
+        "_space_group_symop_operation_xyz",
+        "'x,y,z'",
+        "loop_",
+        "_atom_site_label",
+        "_atom_site_type_symbol",
+        "_atom_site_fract_x",
+        "_atom_site_fract_y",
+        "_atom_site_fract_z",
+        "_atom_site_occupancy",
+    ]
+    out += [
+        f"{label} {e} {f[0]:.6f} {f[1]:.6f} {f[2]:.6f} 1.0"
+        for label, e, f in zip(labels, elements, frac_coords, strict=False)
+    ]
     return "\n".join(out) + "\n"

@@ -5,6 +5,7 @@ agree within a relative tolerance, and an operation of the parent space group co
 translation maps every atom onto a same-element atom within ``tol_A`` (minimum image). Energies are never used:
 distinct nets, conformers or magnetic states that happen to have equal energies stay separate.
 """
+
 from __future__ import annotations
 
 import itertools
@@ -20,15 +21,30 @@ def _lattice_params(lattice) -> tuple:
     lengths = [math.sqrt(sum(x * x for x in v)) for v in lattice]
 
     def angle(u, v):
-        return math.degrees(math.acos(max(-1.0, min(1.0, sum(a * b for a, b in zip(u, v)) /
-                                                    (math.sqrt(sum(a * a for a in u)) * math.sqrt(sum(b * b for b in v)))))))
-    return lengths, [angle(lattice[1], lattice[2]), angle(lattice[0], lattice[2]), angle(lattice[0], lattice[1])]
+        return math.degrees(
+            math.acos(
+                max(
+                    -1.0,
+                    min(
+                        1.0,
+                        sum(a * b for a, b in zip(u, v, strict=False))
+                        / (math.sqrt(sum(a * a for a in u)) * math.sqrt(sum(b * b for b in v))),
+                    ),
+                )
+            )
+        )
+
+    return lengths, [
+        angle(lattice[1], lattice[2]),
+        angle(lattice[0], lattice[2]),
+        angle(lattice[0], lattice[1]),
+    ]
 
 
 def supercell_operations(symmetry_operations, diag) -> list:
     """Parent operations x supercell translations, acting on supercell fractional coordinates."""
     ops = []
-    for (rot, trans) in symmetry_operations:
+    for rot, trans in symmetry_operations:
         for shift in itertools.product(*(range(n) for n in diag)):
             ops.append((rot, tuple(float(trans[r]) + shift[r] for r in range(3))))
     return ops
@@ -46,32 +62,47 @@ def fingerprint(geometry: dict, magnetic_label=None, bond_tolerance_A: float = 0
     from .framework import COVALENT_RADII_A, _close_pairs
 
     lattice, elements = geometry["lattice_A"], geometry["elements"]
-    structure = {"lattice": lattice, "atoms": [{"element": e, "frac": tuple(f)} for e, f in zip(elements, geometry["frac_coords"])]}
+    structure = {
+        "lattice": lattice,
+        "atoms": [
+            {"element": e, "frac": tuple(f)}
+            for e, f in zip(elements, geometry["frac_coords"], strict=False)
+        ],
+    }
     radii = [COVALENT_RADII_A.get(e, 1.5) for e in elements]
-    bonds = Counter(tuple(sorted((elements[i], elements[j]))) for i, j, _, _ in
-                    _close_pairs(structure, lambda i, j: radii[i] + radii[j] + bond_tolerance_A,
-                                 2 * max(radii, default=0.0) + bond_tolerance_A))
+    bonds = Counter(
+        tuple(sorted((elements[i], elements[j])))
+        for i, j, _, _ in _close_pairs(
+            structure,
+            lambda i, j: radii[i] + radii[j] + bond_tolerance_A,
+            2 * max(radii, default=0.0) + bond_tolerance_A,
+        )
+    )
     return (tuple(sorted(Counter(elements).items())), magnetic_label, tuple(sorted(bonds.items())))
 
 
-def equivalent(g1: dict, g2: dict, operations: list, diag, tol_A: float = 0.1, lattice_rel_tol: float = 0.01) -> bool:
+def equivalent(
+    g1: dict, g2: dict, operations: list, diag, tol_A: float = 0.1, lattice_rel_tol: float = 0.01
+) -> bool:
     """Is there an operation mapping g2 onto g1 atom by atom (same element, within tol_A)?"""
     if Counter(g1["elements"]) != Counter(g2["elements"]):
         return False
     (l1, a1), (l2, a2) = _lattice_params(g1["lattice_A"]), _lattice_params(g2["lattice_A"])
-    if any(abs(x - y) > lattice_rel_tol * x for x, y in zip(l1, l2)) or any(abs(x - y) > 1.0 for x, y in zip(a1, a2)):
+    if any(abs(x - y) > lattice_rel_tol * x for x, y in zip(l1, l2, strict=False)) or any(
+        abs(x - y) > 1.0 for x, y in zip(a1, a2, strict=False)
+    ):
         return False
     lattice = g1["lattice_A"]
-    bins = [max(1, int(l / max(2 * tol_A, 1.0))) for l in l1]
+    bins = [max(1, int(length / max(2 * tol_A, 1.0))) for length in l1]
     grid = {}
-    for idx, (el, f) in enumerate(zip(g1["elements"], g1["frac_coords"])):
-        key = (el,) + tuple(int((f[k] % 1.0) * bins[k]) % bins[k] for k in range(3))
+    for idx, (el, f) in enumerate(zip(g1["elements"], g1["frac_coords"], strict=False)):
+        key = (el, *tuple(int(f[k] % 1.0 * bins[k]) % bins[k] for k in range(3)))
         grid.setdefault(key, []).append(idx)
 
     def close(el, f) -> int | None:
         cell = [int(f[k] * bins[k]) % bins[k] for k in range(3)]
         for off in itertools.product((-1, 0, 1), repeat=3):
-            for idx in grid.get((el,) + tuple((cell[k] + off[k]) % bins[k] for k in range(3)), ()):
+            for idx in grid.get((el, *tuple((cell[k] + off[k]) % bins[k] for k in range(3))), ()):
                 g = g1["frac_coords"][idx]
                 d = [f[k] - g[k] - round(f[k] - g[k]) for k in range(3)]
                 if math.sqrt(sum(x * x for x in _frac_to_cart(lattice, d))) <= tol_A:
@@ -80,7 +111,7 @@ def equivalent(g1: dict, g2: dict, operations: list, diag, tol_A: float = 0.1, l
 
     for op in operations:
         used = set()
-        for el, f in zip(g2["elements"], g2["frac_coords"]):
+        for el, f in zip(g2["elements"], g2["frac_coords"], strict=False):
             idx = close(el, _apply(op, f, diag))
             if idx is None or idx in used:
                 break

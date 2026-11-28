@@ -4,6 +4,7 @@ Secrets live only here or in the environment (OPENROUTER_API_KEY, OPENROUTER_MOD
 fill empty fields). They are never written to prompts, ledgers, artifacts or logs: ``Controls.public()`` is the
 redacted view that runs record.
 """
+
 from __future__ import annotations
 
 import copy
@@ -14,24 +15,54 @@ from ..contract import PipelineError
 
 DEFAULTS = {
     "openrouter": {
-        "api_key": "", "base_url": "https://openrouter.ai/api/v1", "model": "",
-        "temperature": 0, "reasoning": None, "provider": {}, "app_url": "", "app_title": "qumof-agents",
-        "timeout_s": [10, 120], "deadline_s": 600, "max_tokens": {"A1": 8000, "A2": 32000, "A67": 24000, "A4": 16000},
+        "api_key": "",
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "",
+        "temperature": 0,
+        "reasoning": None,
+        "provider": {},
+        "app_url": "",
+        "app_title": "qumof-agents",
+        "timeout_s": [10, 120],
+        "deadline_s": 600,
+        "max_tokens": {"A1": 8000, "A2": 32000, "A67": 24000, "A4": 16000},
     },
     # max_llm_requests = normal requests: A1, A2, A67 (+ A4 and, per Hamiltonian revision, A67 + A4 again).
-    "budget": {"max_llm_requests": 6, "allow_extra_request": True, "allow_model_expansion": False,
-               "max_optimisation_rounds": 1},
+    "budget": {
+        "max_llm_requests": 6,
+        "allow_extra_request": True,
+        "allow_model_expansion": False,
+        "max_optimisation_rounds": 1,
+    },
     "cache": {"enabled": True, "dir": "runs/.agent_cache"},
     "orchestration": {"engine": "auto"},
-    "mcp": {"valency": {"enabled": False, "url": "https://mcp.valency.io/", "api_token": "", "timeout_s": 60}},
-    "literature": {"enabled": True, "local_papers_dir": "", "results_per_query": 5, "max_sources": 12,
-                   "max_passages": 40, "max_passage_chars": 1200, "references": [], "extra_queries": []},
+    "mcp": {
+        "valency": {
+            "enabled": False,
+            "url": "https://mcp.valency.io/",
+            "api_token": "",
+            "timeout_s": 60,
+        }
+    },
+    "literature": {
+        "enabled": True,
+        "local_papers_dir": "",
+        "results_per_query": 5,
+        "max_sources": 12,
+        "max_passages": 40,
+        "max_passage_chars": 1200,
+        "references": [],
+        "extra_queries": [],
+    },
     "assessment": {"top_k_candidates": 5, "required_checks": None},
     "selection": {"allow_scope_exclusions": True},
     "datasets": [],
 }
-ENV = {("openrouter", "api_key"): "OPENROUTER_API_KEY", ("openrouter", "model"): "OPENROUTER_MODEL",
-       ("mcp", "valency", "api_token"): "VALENCY_API_TOKEN"}
+ENV = {
+    ("openrouter", "api_key"): "OPENROUTER_API_KEY",
+    ("openrouter", "model"): "OPENROUTER_MODEL",
+    ("mcp", "valency", "api_token"): "VALENCY_API_TOKEN",
+}
 SECRET_KEYS = {"api_key", "api_token"}
 ENGINES = ("auto", "langgraph", "sequential")
 
@@ -39,13 +70,20 @@ ENGINES = ("auto", "langgraph", "sequential")
 def _merge(base: dict, extra: dict) -> dict:
     out = copy.deepcopy(base)
     for key, value in (extra or {}).items():
-        out[key] = _merge(out[key], value) if isinstance(value, dict) and isinstance(out.get(key), dict) else value
+        out[key] = (
+            _merge(out[key], value)
+            if isinstance(value, dict) and isinstance(out.get(key), dict)
+            else value
+        )
     return out
 
 
 def _redact(d):
     if isinstance(d, dict):
-        return {k: ("<set>" if v else "<empty>") if k in SECRET_KEYS else _redact(v) for k, v in d.items()}
+        return {
+            k: ("<set>" if v else "<empty>") if k in SECRET_KEYS else _redact(v)
+            for k, v in d.items()
+        }
     return d
 
 
@@ -66,7 +104,9 @@ class Controls:
 
     @property
     def max_llm_requests(self) -> int:
-        return self.data["budget"]["max_llm_requests"] + (1 if self.data["budget"]["allow_extra_request"] else 0)
+        return self.data["budget"]["max_llm_requests"] + (
+            1 if self.data["budget"]["allow_extra_request"] else 0
+        )
 
     def public(self) -> dict:
         return _redact(self.data)
@@ -80,18 +120,47 @@ class Controls:
             errs.append(("MISSING_MODEL", "openrouter.model / OPENROUTER_MODEL"))
         rounds = b.get("max_optimisation_rounds")
         if type(rounds) is not int or not 0 <= rounds <= 3:
-            errs.append(("INVALID_BUDGET", "budget.max_optimisation_rounds: integer 0-3 (A4 Hamiltonian revisions)"))
-        elif b["max_llm_requests"] != normal_requests(rounds) or type(b["allow_extra_request"]) is not bool \
-                or type(b["allow_model_expansion"]) is not bool:
-            errs.append(("INVALID_BUDGET", f"budget: max_llm_requests is {normal_requests(rounds)} for "
-                                           f"max_optimisation_rounds={rounds} (one request per role call); "
-                                           "allow_extra_request and allow_model_expansion true/false"))
+            errs.append(
+                (
+                    "INVALID_BUDGET",
+                    "budget.max_optimisation_rounds: integer 0-3 (A4 Hamiltonian revisions)",
+                )
+            )
+        elif (
+            b["max_llm_requests"] != normal_requests(rounds)
+            or type(b["allow_extra_request"]) is not bool
+            or type(b["allow_model_expansion"]) is not bool
+        ):
+            errs.append(
+                (
+                    "INVALID_BUDGET",
+                    f"budget: max_llm_requests is {normal_requests(rounds)} for "
+                    f"max_optimisation_rounds={rounds} (one request per role call); "
+                    "allow_extra_request and allow_model_expansion true/false",
+                )
+            )
         for d in self.data["datasets"]:
             needed = ("index", "hdf5") if d.get("format") == "materials_toolkits" else ("path",)
-            if d.get("format") not in ("materials_toolkits", "table") or not d.get("id") or not all(d.get(k) for k in needed):
-                errs.append(("INVALID_DATASET", f"datasets[{d.get('id')}]: format materials_toolkits (index, hdf5) or table (path)"))
-        if not {"A1", "A2", "A67", "A4"} <= set(o["max_tokens"]) or not all(type(v) is int and v > 0 for v in o["max_tokens"].values()):
-            errs.append(("INVALID_MAX_TOKENS", "openrouter.max_tokens needs positive integers for A1, A2, A67, A4"))
+            if (
+                d.get("format") not in ("materials_toolkits", "table")
+                or not d.get("id")
+                or not all(d.get(k) for k in needed)
+            ):
+                errs.append(
+                    (
+                        "INVALID_DATASET",
+                        f"datasets[{d.get('id')}]: format materials_toolkits (index, hdf5) or table (path)",
+                    )
+                )
+        if not {"A1", "A2", "A67", "A4"} <= set(o["max_tokens"]) or not all(
+            type(v) is int and v > 0 for v in o["max_tokens"].values()
+        ):
+            errs.append(
+                (
+                    "INVALID_MAX_TOKENS",
+                    "openrouter.max_tokens needs positive integers for A1, A2, A67, A4",
+                )
+            )
         if self.data["orchestration"]["engine"] not in ENGINES:
             errs.append(("INVALID_ENGINE", f"orchestration.engine must be one of {ENGINES}"))
         valency = self.data["mcp"]["valency"]
@@ -112,6 +181,7 @@ def load_controls(path=None, overrides: dict | None = None) -> Controls:
         if not path.exists():
             raise PipelineError("CONTROLS_NOT_FOUND", str(path))
         import yaml
+
         data = yaml.safe_load(path.read_text()) or {}
         if not isinstance(data, dict):
             raise PipelineError("MALFORMED_CONTROLS", str(path))

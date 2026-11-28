@@ -60,8 +60,8 @@ literature:                            # runs as ordinary software before A67; n
   # A title is accepted only on a DOI match or a near-identical title; otherwise it is reported unresolved.
   references:
     - {alias: Kang, title: "Quantum Computing Based Design of Multivariate Porous Materials", doi: 10.1021/acscentsci.5c00918}
-    - {alias: Cai tbo/fmj, title: "Control of Metal–Organic Framework Crystal Topology by Ligand Functionalization", doi: 10.1021/cg501285q}
-    - {alias: Fe–MOF-74 (Rocca et al.), arxiv_id: "2510.02550"}
+    - {alias: Cai tbo/fmj, title: "Control of Metal-Organic Framework Crystal Topology by Ligand Functionalization", doi: 10.1021/cg501285q}
+    - {alias: Fe-MOF-74 (Rocca et al.), arxiv_id: "2510.02550"}
     - {alias: multi-scale embedded MOF energetics, arxiv_id: "2505.04527"}
   extra_queries: []                    # added to the deterministic query templates
 

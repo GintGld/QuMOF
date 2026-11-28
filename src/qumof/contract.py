@@ -3,17 +3,18 @@
 One status vocabulary, typed error codes, content hashing and record helpers
 used across every module boundary.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-from enum import Enum
+from enum import StrEnum
 from fractions import Fraction
 
 SCHEMA_VERSION = "0.1"
 
 
-class StageStatus(str, Enum):
+class StageStatus(StrEnum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     BLOCKED = "BLOCKED"
@@ -25,14 +26,14 @@ class StageStatus(str, Enum):
     NOT_RUN = "NOT_RUN"
 
 
-class JobState(str, Enum):
+class JobState(StrEnum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
 
 
-class StopReason(str, Enum):
+class StopReason(StrEnum):
     CONVERGED_WITHIN_SCOPE = "CONVERGED_WITHIN_SCOPE"
     BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
     MODEL_INADEQUATE = "MODEL_INADEQUATE"
@@ -86,7 +87,12 @@ def content_hash(obj) -> str:
 
 def make_record(record_type: str, provenance: str, **fields) -> dict:
     """Immutable artifact record; artifact_id is derived from its content."""
-    body = {"record_type": record_type, "schema_version": SCHEMA_VERSION, "provenance": provenance, **fields}
+    body = {
+        "record_type": record_type,
+        "schema_version": SCHEMA_VERSION,
+        "provenance": provenance,
+        **fields,
+    }
     body = json.loads(canonical_json(body))  # normalise Fractions/sets to JSON types
     body["artifact_id"] = f"{record_type}:{content_hash(body)[:20]}"
     return body

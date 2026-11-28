@@ -4,6 +4,7 @@ Workflow state on disk is authoritative (00_SHARED_CONTRACT, execution contract)
 state write takes a file lock and checks that the on-disk revision is the one this store last read or wrote, so a
 second writer (another process, an AiiDA worker) raises STATE_VERSION_CONFLICT instead of overwriting (T10.1).
 """
+
 from __future__ import annotations
 
 import fcntl
@@ -26,9 +27,15 @@ class RunStore:
         if self.state_path.exists():
             self.state = json.loads(self.state_path.read_text())
         else:
-            self.state = {"state_version": 0, "project_fingerprint": None, "stages": {},
-                          "counters": {"evaluator_submissions": 0, "evaluator_cache_hits": 0, "llm_calls": 0}}
-        self._revision = self.state.get("revision", 0)  # the on-disk revision this store last read or wrote
+            self.state = {
+                "state_version": 0,
+                "project_fingerprint": None,
+                "stages": {},
+                "counters": {"evaluator_submissions": 0, "evaluator_cache_hits": 0, "llm_calls": 0},
+            }
+        self._revision = self.state.get(
+            "revision", 0
+        )  # the on-disk revision this store last read or wrote
 
     # -- artifacts ---------------------------------------------------------
     def _path(self, artifact_id: str) -> Path:
@@ -55,12 +62,20 @@ class RunStore:
         return self._path(artifact_id).exists()
 
     # -- state -------------------------------------------------------------
-    def bind_project(self, fingerprint: str, project_type: str = "synthetic_fixture", provenance: str = "SYNTHETIC") -> None:
+    def bind_project(
+        self,
+        fingerprint: str,
+        project_type: str = "synthetic_fixture",
+        provenance: str = "SYNTHETIC",
+    ) -> None:
         # Synthetic and physical projects never share a run directory, whatever their fingerprints.
         for key, value in (("project_type", project_type), ("provenance", provenance)):
             bound = self.state.get(key)
             if bound is not None and bound != value:
-                raise PipelineError("RUN_DIR_PROJECT_TYPE_MISMATCH", f"{key}: run dir holds {bound}, project is {value}")
+                raise PipelineError(
+                    "RUN_DIR_PROJECT_TYPE_MISMATCH",
+                    f"{key}: run dir holds {bound}, project is {value}",
+                )
             self.state[key] = value
         current = self.state.get("project_fingerprint")
         if current is not None and current != fingerprint:
@@ -72,11 +87,22 @@ class RunStore:
     def stage(self, name: str) -> dict | None:
         return self.state["stages"].get(name)
 
-    def commit_stage(self, name: str, status: str, input_fingerprint: str, artifact_ids: dict[str,str], detail=None):
+    def commit_stage(
+        self,
+        name: str,
+        status: str,
+        input_fingerprint: str,
+        artifact_ids: dict[str, str],
+        detail=None,
+    ):
         self.state["state_version"] += 1
-        self.state["stages"][name] = {"status": status, "input_fingerprint": input_fingerprint,
-                                      "artifact_ids": artifact_ids, "detail": detail,
-                                      "state_version": self.state["state_version"]}
+        self.state["stages"][name] = {
+            "status": status,
+            "input_fingerprint": input_fingerprint,
+            "artifact_ids": artifact_ids,
+            "detail": detail,
+            "state_version": self.state["state_version"],
+        }
         self._save_state()
         self.log("stage_committed", stage=name, status=status, artifact_ids=artifact_ids)
 
@@ -89,7 +115,9 @@ class RunStore:
         return self.state["state_version"]
 
     def log(self, event: str, **data) -> None:
-        line = canonical_json({"event": event, "state_version": self.state["state_version"], **data})
+        line = canonical_json(
+            {"event": event, "state_version": self.state["state_version"], **data}
+        )
         with open(self.root / "events.jsonl", "a") as handle:
             handle.write(line + "\n")
 
@@ -104,9 +132,16 @@ class RunStore:
 
     def _save_state(self) -> None:
         with self._lock():
-            on_disk = json.loads(self.state_path.read_text()).get("revision", 0) if self.state_path.exists() else 0
+            on_disk = (
+                json.loads(self.state_path.read_text()).get("revision", 0)
+                if self.state_path.exists()
+                else 0
+            )
             if on_disk != self._revision:
-                raise PipelineError("STATE_VERSION_CONFLICT", f"{self.root}: revision {on_disk} on disk, {self._revision} expected")
+                raise PipelineError(
+                    "STATE_VERSION_CONFLICT",
+                    f"{self.root}: revision {on_disk} on disk, {self._revision} expected",
+                )
             self.state["revision"] = self._revision = on_disk + 1
             self._atomic_write(self.state_path, json.dumps(self.state, indent=2, sort_keys=True))
 

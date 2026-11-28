@@ -1,10 +1,8 @@
 # CLAUDE.md
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+## Base rules
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
-
-## 1. Think Before Coding
+### 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
@@ -14,7 +12,7 @@ Before implementing:
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
 
-## 2. Simplicity First
+### 2. Simplicity First
 
 **Minimum code that solves the problem. Nothing speculative.**
 
@@ -26,7 +24,7 @@ Before implementing:
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-## 3. Surgical Changes
+### 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
 
@@ -42,7 +40,7 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the user's request.
 
-## 4. Goal-Driven Execution
+### 4. Goal-Driven Execution
 
 **Define success criteria. Loop until verified.**
 
@@ -74,3 +72,39 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 - A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
+
+## Type checking (pyright)
+
+Before finishing a task, run `uv run pyright` on the whole project (not only changed files). It must report 0 errors.
+
+Rules:
+- Config is `[tool.pyright]` in the root `pyproject.toml`. Don't change it, and don't remove entries from the `strict` list.
+- Never silence errors with `# type: ignore`, `# pyright: ignore`, `cast()`, `Any`, or a `# pyright: basic` file header. Fix the types. If something truly can't be typed, explain why and ask first; then use `# pyright: ignore[ruleName]` with the specific rule.
+- When you fully migrate a module (no errors in strict mode), propose adding it to the `strict` list.
+
+## Linting & formatting (ruff)
+
+After editing any Python file, run on the files you changed:
+
+```bash
+uv run ruff check --fix <files>
+uv run ruff format <files>
+```
+
+Before finishing a task, check the whole repo:
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
+```
+
+All three must pass. If one fails, fix the code, then rerun.
+
+Rules:
+- Config lives in the root `pyproject.toml`. Don't change ruff settings or rule selection unless asked.
+- Never add `# noqa`, `# fmt: skip` or `# fmt: off` to silence ruff. Fix the issue. If it can't be fixed, explain why and ask first.
+- When you fix code that has an existing `# noqa` comment, remove the comment if the issue is gone (RUF100 reports stale ones).
+- Put comments on their own line above the code, not at the end of a line. Long trailing comments make `ruff format` split lines into `if (\n    x\n):`.
+- Only format files you touched. Don't run `ruff format .` on the whole repo as part of an unrelated change.
+- Never use `--unsafe-fixes` without showing me the diff first (`ruff check --unsafe-fixes --diff <files>`).

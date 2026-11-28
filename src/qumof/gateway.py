@@ -6,6 +6,7 @@ actions a proposal from that role may name. With agents disabled every proposal 
 AGENTS_DISABLED after the checks run. With agents enabled a proposal that passes is ACCEPTED but not executed:
 the controller (agents/validate.py) checks its arguments semantically and applies it to the next pipeline input.
 """
+
 from __future__ import annotations
 
 from .contract import make_record
@@ -17,17 +18,31 @@ ROLE_TOOLS = {
     "A4": {"accept_candidates", "revise_hamiltonian"},
 }
 CONTROLLER_ONLY = {"advance_workflow"}  # state commits are never delegated to an LLM role
-REQUIRED = ("project_id", "expected_state_version", "role", "evidence_artifact_ids", "proposed_action")
+REQUIRED = (
+    "project_id",
+    "expected_state_version",
+    "role",
+    "evidence_artifact_ids",
+    "proposed_action",
+)
 
 
-def review_proposal(store, project_id: str, proposal: dict, agents_enabled: bool,
-                    provenance: str = "SYNTHETIC") -> dict:
+def review_proposal(
+    store, project_id: str, proposal: dict, agents_enabled: bool, provenance: str = "SYNTHETIC"
+) -> dict:
     """advance_workflow(project_id, expected_state_version, action) -> TransitionResult (DecisionRecord)."""
 
     def decide(outcome, code=None, detail=""):
         error = {"code": code, "detail": detail} if code else None
-        record = make_record("DecisionRecord", provenance, state_version=store.version, proposal=proposal,
-                             outcome=outcome, error=error, executed=False)
+        record = make_record(
+            "DecisionRecord",
+            provenance,
+            state_version=store.version,
+            proposal=proposal,
+            outcome=outcome,
+            error=error,
+            executed=False,
+        )
         store.log("proposal_rejected" if outcome == "REJECTED" else "proposal_accepted", code=code)
         return record
 
@@ -40,7 +55,9 @@ def review_proposal(store, project_id: str, proposal: dict, agents_enabled: bool
     if proposal["project_id"] != project_id:
         return reject("WRONG_PROJECT", proposal["project_id"])
     if proposal["expected_state_version"] != store.version:
-        return reject("STALE_STATE_VERSION", f"{proposal['expected_state_version']} != {store.version}")
+        return reject(
+            "STALE_STATE_VERSION", f"{proposal['expected_state_version']} != {store.version}"
+        )
     role = proposal["role"]
     if role not in ROLE_TOOLS:
         return reject("UNKNOWN_ROLE", role)
@@ -52,5 +69,7 @@ def review_proposal(store, project_id: str, proposal: dict, agents_enabled: bool
     if absent:
         return reject("UNKNOWN_EVIDENCE_ARTIFACT", ", ".join(absent))
     if not agents_enabled:
-        return reject("AGENTS_DISABLED", "runtime_agents.enabled is false; deterministic controller only")
+        return reject(
+            "AGENTS_DISABLED", "runtime_agents.enabled is false; deterministic controller only"
+        )
     return decide("ACCEPTED")

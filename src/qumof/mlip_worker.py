@@ -12,6 +12,7 @@ carry none). Relaxation: ASE FIRE (or BFGS) on a FrechetCellFilter (variable cel
 Energies eV per cell; forces eV/A; stress GPa (ASE sign convention).
 This file is self-contained (no qumof imports) so any interpreter with the engine can run it.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -23,9 +24,11 @@ import traceback
 
 WORKER_VERSION = "1"  # bump when a change alters the computed quantities (part of the ML fidelity)
 EV_PER_A3_TO_GPA = 160.21766208
-ORB_MODELS = {"orb-v3-conservative-inf-omat": "orb_v3_conservative_inf_omat",
-              "orb-v3-conservative-20-omat": "orb_v3_conservative_20_omat",
-              "orb-v3-conservative-inf-mpa": "orb_v3_conservative_inf_mpa"}
+ORB_MODELS = {
+    "orb-v3-conservative-inf-omat": "orb_v3_conservative_inf_omat",
+    "orb-v3-conservative-20-omat": "orb_v3_conservative_20_omat",
+    "orb-v3-conservative-inf-mpa": "orb_v3_conservative_inf_mpa",
+}
 
 
 def _sha256(path: str) -> str:
@@ -46,19 +49,35 @@ def _orb(protocol: dict):
     loader = getattr(pretrained, ORB_MODELS[protocol["model"]])
     weights = protocol.get("checkpoint_path")
     if not weights:  # orb's default URL, cached locally by cached_path after the first download
-        from cached_path import cached_path
         import inspect
+
+        from cached_path import cached_path
+
         weights = str(cached_path(inspect.signature(loader).parameters["weights_path"].default))
     device = protocol.get("device", "cpu")
     torch.set_num_threads(int(protocol.get("n_threads") or os.cpu_count() or 1))
-    model, adapter = loader(weights_path=weights, device=device, precision=protocol.get("precision", "float32-high"),
-                            compile=False)
+    model, adapter = loader(
+        weights_path=weights,
+        device=device,
+        precision=protocol.get("precision", "float32-high"),
+        compile=False,
+    )
     if protocol.get("dispersion") == "D3BJ":
         from orb_models.forcefield.inference.d3_model import AlchemiDFTD3, D3SumModel
-        model = D3SumModel(model, AlchemiDFTD3(functional=protocol.get("d3_functional", "PBE"), damping="BJ"))
-    identity = {"engine": "orb", "model": protocol["model"], "dispersion": protocol.get("dispersion"),
-                "orb_models_version": md.version("orb-models"), "torch_version": torch.__version__,
-                "checkpoint_path": weights, "checkpoint_sha256": _sha256(weights), "worker_version": WORKER_VERSION}
+
+        model = D3SumModel(
+            model, AlchemiDFTD3(functional=protocol.get("d3_functional", "PBE"), damping="BJ")
+        )
+    identity = {
+        "engine": "orb",
+        "model": protocol["model"],
+        "dispersion": protocol.get("dispersion"),
+        "orb_models_version": md.version("orb-models"),
+        "torch_version": torch.__version__,
+        "checkpoint_path": weights,
+        "checkpoint_sha256": _sha256(weights),
+        "worker_version": WORKER_VERSION,
+    }
     return ORBCalculator(model, adapter, device=device), identity
 
 
@@ -73,30 +92,44 @@ def _relax(atoms, calc, policy: dict) -> dict:
     optimizer = {"FIRE": FIRE, "BFGS": BFGS}[policy.get("optimizer", "FIRE")](target, logfile=None)
     converged = bool(optimizer.run(fmax=policy["fmax_eV_per_A"], steps=policy["max_steps"]))
     forces = atoms.get_forces()
-    out = {"initial_energy_eV": initial, "energy_eV": float(atoms.get_potential_energy()), "converged": converged,
-           "n_steps": int(optimizer.nsteps), "max_force_eV_per_A": float(np.linalg.norm(forces, axis=1).max())}
+    out = {
+        "initial_energy_eV": initial,
+        "energy_eV": float(atoms.get_potential_energy()),
+        "converged": converged,
+        "n_steps": int(optimizer.nsteps),
+        "max_force_eV_per_A": float(np.linalg.norm(forces, axis=1).max()),
+    }
     if policy.get("cell", "variable") == "variable":
         out["max_stress_GPa"] = float(np.abs(atoms.get_stress()).max() * EV_PER_A3_TO_GPA)
-    out["relaxed"] = {"lattice_A": atoms.cell.array.tolist(), "elements": atoms.get_chemical_symbols(),
-                      "frac_coords": atoms.get_scaled_positions(wrap=True).tolist()}
+    out["relaxed"] = {
+        "lattice_A": atoms.cell.array.tolist(),
+        "elements": atoms.get_chemical_symbols(),
+        "frac_coords": atoms.get_scaled_positions(wrap=True).tolist(),
+    }
     return out
 
 
 def main(argv) -> int:
     probe = argv[0] == "--probe"
     path = argv[1] if probe else argv[0]
-    batch = json.loads(open(path).read())
+    with open(path) as fh:
+        batch = json.load(fh)
     protocol = batch["protocol"]
     try:
         if protocol["engine"] != "orb" or protocol["model"] not in ORB_MODELS:
             raise ValueError(f"unsupported engine/model {protocol['engine']}/{protocol['model']}")
         calc, identity = _orb(protocol)
-    except Exception as exc:  # the engine is missing or the checkpoint cannot load: report, do not guess
-        json.dump({"identity": None, "error": f"{type(exc).__name__}: {exc}", "results": {}},
-                  open("probe.json" if probe else "results.json", "w"))
+    except (
+        Exception
+    ) as exc:  # the engine is missing or the checkpoint cannot load: report, do not guess
+        with open("probe.json" if probe else "results.json", "w") as fh:
+            json.dump(
+                {"identity": None, "error": f"{type(exc).__name__}: {exc}", "results": {}}, fh
+            )
         return 2
     if probe:
-        json.dump({"identity": identity}, open("probe.json", "w"), indent=2)
+        with open("probe.json", "w") as fh:
+            json.dump({"identity": identity}, fh, indent=2)
         return 0
     from ase import Atoms
 
@@ -104,11 +137,22 @@ def main(argv) -> int:
     for item in batch["structures"]:
         start = time.perf_counter()
         try:
-            atoms = Atoms(symbols=item["elements"], scaled_positions=item["frac_coords"], cell=item["lattice_A"], pbc=True)
-            results[item["key"]] = {"status": "SUCCEEDED", **_relax(atoms, calc, batch["relaxation"])}
+            atoms = Atoms(
+                symbols=item["elements"],
+                scaled_positions=item["frac_coords"],
+                cell=item["lattice_A"],
+                pbc=True,
+            )
+            results[item["key"]] = {
+                "status": "SUCCEEDED",
+                **_relax(atoms, calc, batch["relaxation"]),
+            }
         except Exception as exc:  # a failed relaxation is a failure, never an energy
-            results[item["key"]] = {"status": "FAILED", "error": f"{type(exc).__name__}: {exc}",
-                                    "traceback": traceback.format_exc()[-1500:]}
+            results[item["key"]] = {
+                "status": "FAILED",
+                "error": f"{type(exc).__name__}: {exc}",
+                "traceback": traceback.format_exc()[-1500:],
+            }
         results[item["key"]]["wall_time_s"] = round(time.perf_counter() - start, 3)
         with open("results.json.tmp", "w") as handle:  # atomic per-structure checkpoint
             json.dump({"identity": identity, "results": results}, handle, indent=1)

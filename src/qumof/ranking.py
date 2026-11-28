@@ -1,4 +1,5 @@
 """Task 09 (ranking/validation): compatible-energy ranking, competition coverage, structure checks."""
+
 from __future__ import annotations
 
 from fractions import Fraction
@@ -7,7 +8,9 @@ from .contract import PipelineError, StageStatus, make_record
 from .datasets import check_energy_compatibility
 
 
-def rank_candidates(spec, pool_rows: list, results: list, level: str, tie_tolerance: Fraction | None = None) -> dict:
+def rank_candidates(
+    spec, pool_rows: list, results: list, level: str, tie_tolerance: Fraction | None = None
+) -> dict:
     """rank_candidates(candidate_ids, comparison_policy_id) -> RankingReport for one energy level.
 
     Without ``tie_tolerance`` only exact equality is a tie (noiseless fixture). With it, a candidate within the
@@ -27,21 +30,43 @@ def rank_candidates(spec, pool_rows: list, results: list, level: str, tie_tolera
             failed.append({"orbit_id": cand["orbit_id"], "status": res["status"]})
         else:
             rows.append((cand, res))
-    check_energy_compatibility([{"fidelity": res[f"{level}_fidelity"], "energy_unit": res["energy_unit"],
-                                 "normalization": res["normalization"], "comparison_group": res["comparison_group"],
-                                 "status": res["status"], "provenance": res["provenance"],
-                                 "configuration_id": res["configuration_id"]} for _, res in rows], spec.provenance)
+    check_energy_compatibility(
+        [
+            {
+                "fidelity": res[f"{level}_fidelity"],
+                "energy_unit": res["energy_unit"],
+                "normalization": res["normalization"],
+                "comparison_group": res["comparison_group"],
+                "status": res["status"],
+                "provenance": res["provenance"],
+                "configuration_id": res["configuration_id"],
+            }
+            for _, res in rows
+        ],
+        spec.provenance,
+    )
     table = []
     for cand, res in rows:
         energy = Fraction(res[f"{level}_energy_exact"])
-        table.append({"orbit_id": cand["orbit_id"], "configuration_id": res["configuration_id"],
-                      "topology_id": cand["topology_id"], "occupation": "".join(map(str, cand["bits"])),
-                      "bits": cand["bits"], "surrogate_base_energy_eV": cand["predicted_base_energy_eV"],
-                      "base_energy_eV": res["base_energy_eV"], "correction_eV": res.get("correction_eV"),
-                      "corrected_energy_eV": res.get("corrected_energy_eV"), "ranking_energy_eV": float(energy),
-                      "ranking_energy_exact": str(energy), "base_fidelity": res["base_fidelity"],
-                      "corrected_fidelity": res.get("corrected_fidelity"), "provenance": res["provenance"],
-                      "calculation_result_id": res["artifact_id"]})
+        table.append(
+            {
+                "orbit_id": cand["orbit_id"],
+                "configuration_id": res["configuration_id"],
+                "topology_id": cand["topology_id"],
+                "occupation": "".join(map(str, cand["bits"])),
+                "bits": cand["bits"],
+                "surrogate_base_energy_eV": cand["predicted_base_energy_eV"],
+                "base_energy_eV": res["base_energy_eV"],
+                "correction_eV": res.get("correction_eV"),
+                "corrected_energy_eV": res.get("corrected_energy_eV"),
+                "ranking_energy_eV": float(energy),
+                "ranking_energy_exact": str(energy),
+                "base_fidelity": res["base_fidelity"],
+                "corrected_fidelity": res.get("corrected_fidelity"),
+                "provenance": res["provenance"],
+                "calculation_result_id": res["artifact_id"],
+            }
+        )
     table.sort(key=lambda r: (Fraction(r["ranking_energy_exact"]), r["orbit_id"]))
     values = [Fraction(r["ranking_energy_exact"]) for r in table]
     tol = tie_tolerance or 0
@@ -54,15 +79,24 @@ def rank_candidates(spec, pool_rows: list, results: list, level: str, tie_tolera
         minima.setdefault(row["topology_id"], row["ranking_energy_eV"])
     complete = not missing and not failed
     return make_record(
-        "RankingReport", spec.provenance, level=level,
-        fidelity=table[0][f"{level}_fidelity"] if table else None, comparison_group=rows[0][1]["comparison_group"] if rows else None,
+        "RankingReport",
+        spec.provenance,
+        level=level,
+        fidelity=table[0][f"{level}_fidelity"] if table else None,
+        comparison_group=rows[0][1]["comparison_group"] if rows else None,
         status=StageStatus.COMPLETED.value if complete else StageStatus.INCOMPLETE.value,
-        missing_evaluations=missing, failed_evaluations=failed,
-        tie_policy=("exact rational equality is a true degeneracy" if tie_tolerance is None else
-                    f"differences <= {float(tie_tolerance)} eV per formula unit are ties within tolerance")
-                   + "; display order breaks ties by orbit_id",
+        missing_evaluations=missing,
+        failed_evaluations=failed,
+        tie_policy=(
+            "exact rational equality is a true degeneracy"
+            if tie_tolerance is None
+            else f"differences <= {float(tie_tolerance)} eV per formula unit are ties within tolerance"
+        )
+        + "; display order breaks ties by orbit_id",
         coverage="screened finalist pool (top-k unique orbits per graph), not a global certificate over all legal states",
-        winning_topology=table[0]["topology_id"] if table else None, pool_minima_eV=minima, ranked=table,
+        winning_topology=table[0]["topology_id"] if table else None,
+        pool_minima_eV=minima,
+        ranked=table,
     )
 
 
@@ -73,15 +107,30 @@ def ranking_order_changed(base: dict, corrected: dict) -> bool:
 def evaluate_reference_mixtures(spec, ranking: dict) -> dict:
     """No phase-separated reference set is supplied, so no stability claim is possible."""
     # Fixture projects have no reference phases; physical projects use references.evaluate_reference_mixtures.
-    return make_record("CompetitionReport", spec.provenance, ranking_id=ranking["artifact_id"],
-                       status=StageStatus.INCOMPLETE.value, reference_set=None,
-                       reason="no reference phases supplied; result is a relative ranking, not a stability certificate")
+    return make_record(
+        "CompetitionReport",
+        spec.provenance,
+        ranking_id=ranking["artifact_id"],
+        status=StageStatus.INCOMPLETE.value,
+        reference_set=None,
+        reason="no reference phases supplied; result is a relative ranking, not a stability certificate",
+    )
 
 
 def validate_structures(spec) -> dict:
     # Fixture projects have no atoms. Physical projects use validation.validate_structure (T09.1).
-    #TODO: Task 09 — CrystalNets/MOFid net identity, phonon/elastic stability for finalists, PXRD (and validated NMR).
+    # TODO: Task 09 — CrystalNets/MOFid net identity, phonon/elastic stability for finalists, PXRD (and validated NMR).
     skipped = StageStatus.SKIPPED_NO_ATOMIC_GEOMETRY.value
-    return {name: skipped for name in ("atomic_construction", "mofchecker", "crystalnets_topology", "zeopp_pores",
-                                       "post_relaxation_connectivity", "phonon_elastic_stability", "pxrd_comparison",
-                                       "nmr_comparison")}
+    return {
+        name: skipped
+        for name in (
+            "atomic_construction",
+            "mofchecker",
+            "crystalnets_topology",
+            "zeopp_pores",
+            "post_relaxation_connectivity",
+            "phonon_elastic_stability",
+            "pxrd_comparison",
+            "nmr_comparison",
+        )
+    }

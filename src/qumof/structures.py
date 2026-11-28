@@ -3,6 +3,7 @@
 In graph mode a Decoration is a binary occupation of substitution slots. Atomic
 framework construction is reported as SKIPPED_NO_ATOMIC_GEOMETRY.
 """
+
 from __future__ import annotations
 
 from collections import Counter, deque
@@ -24,14 +25,20 @@ def states_of(spec, topology):
     states = feasible_states(topology.n_sites, n_ones_of(spec, topology))
     if not topology.sublattice_counts:
         return states
-    return (b for b in states if all(sum(b[i] for i in sites) == k for sites, k in topology.sublattice_counts))
+    return (
+        b
+        for b in states
+        if all(sum(b[i] for i in sites) == k for sites, k in topology.sublattice_counts)
+    )
 
 
 def require_single_count(topology, solver: str) -> None:
     """Solvers whose moves or bounds assume one global count refuse per-sublattice constraints."""
     if topology.sublattice_counts:
-        raise PipelineError("UNSUPPORTED_SUBLATTICE_CONSTRAINTS",
-                            f"{solver} assumes one global count; {topology.topology_id} declares {len(topology.sublattice_counts)}")
+        raise PipelineError(
+            "UNSUPPORTED_SUBLATTICE_CONSTRAINTS",
+            f"{solver} assumes one global count; {topology.topology_id} declares {len(topology.sublattice_counts)}",
+        )
 
 
 def validate_occupation(bits, n_sites: int, n_ones: int) -> tuple:
@@ -74,13 +81,17 @@ def decode_species(bits, species_encoding: dict) -> list:
 
 
 def make_decoration(spec, topology, bits) -> dict:
-    #TODO: Task 01 — orientation states for asymmetric linkers (finite declared catalogue) as extra decoration variables.
+    # TODO: Task 01 — orientation states for asymmetric linkers (finite declared catalogue) as extra decoration variables.
     bits = validate_occupation(list(bits), topology.n_sites, n_ones_of(spec, topology))
     species = decode_species(bits, spec.species_encoding)
     return {
-        "record_type": "Decoration", "topology_id": topology.topology_id,
-        "configuration_id": configuration_id(topology, bits), "orbit_id": orbit_id(topology, bits),
-        "bits": list(bits), "species_by_slot": species, "inventory": dict(sorted(Counter(species).items())),
+        "record_type": "Decoration",
+        "topology_id": topology.topology_id,
+        "configuration_id": configuration_id(topology, bits),
+        "orbit_id": orbit_id(topology, bits),
+        "bits": list(bits),
+        "species_by_slot": species,
+        "inventory": dict(sorted(Counter(species).items())),
         "provenance": spec.provenance,
     }
 
@@ -88,16 +99,24 @@ def make_decoration(spec, topology, bits) -> dict:
 def define_decoration_space(spec, topology) -> dict:
     """Integrator glue tool: the feasible fixed-composition decoration space."""
     # Transfer supercells are separate TopologySpecs (project_spec._load_source, transfer.py).
-    #TODO: Tasks 01/05 — non-diagonal supercell matrices.
+    # TODO: Tasks 01/05 — non-diagonal supercell matrices.
     orbits = Counter(orbit_id(topology, b) for b in states_of(spec, topology))
     return make_record(
-        "DecorationSpace", spec.provenance, topology_id=topology.topology_id, n_sites=topology.n_sites,
-        composition=composition_of(spec, topology), encoding=spec.species_encoding,
+        "DecorationSpace",
+        spec.provenance,
+        topology_id=topology.topology_id,
+        n_sites=topology.n_sites,
+        composition=composition_of(spec, topology),
+        encoding=spec.species_encoding,
         bit_order="bits[i] is site i; string leftmost character is site 0",
-        n_feasible=sum(orbits.values()), n_symmetry_orbits=len(orbits),
+        n_feasible=sum(orbits.values()),
+        n_symmetry_orbits=len(orbits),
         orbit_sizes=dict(sorted(orbits.items())),
-        symmetry_policy={"operations": "explicit site permutations", "n_operations": len(topology.permutations),
-                         "species_label_exchange": False},
+        symmetry_policy={
+            "operations": "explicit site permutations",
+            "n_operations": len(topology.permutations),
+            "species_label_exchange": False,
+        },
     )
 
 
@@ -120,8 +139,14 @@ def check_candidate_file(spec, spaces: dict) -> dict:
         per_topology[topo.topology_id] += 1
     for tid, space in spaces.items():
         if per_topology[tid] != space["n_feasible"]:
-            raise PipelineError("CANDIDATE_FILE_INCOMPLETE", f"{tid}: {per_topology[tid]} != {space['n_feasible']}")
-    return {"n_rows": len(spec.candidate_rows), "per_topology": dict(per_topology), "consistent": True}
+            raise PipelineError(
+                "CANDIDATE_FILE_INCOMPLETE", f"{tid}: {per_topology[tid]} != {space['n_feasible']}"
+            )
+    return {
+        "n_rows": len(spec.candidate_rows),
+        "per_topology": dict(per_topology),
+        "consistent": True,
+    }
 
 
 def swap_graph_connected(topology, n_sites: int, n_ones: int) -> dict:
@@ -139,8 +164,12 @@ def swap_graph_connected(topology, n_sites: int, n_ones: int) -> dict:
                 if moved not in seen:
                     seen.add(moved)
                     queue.append(moved)
-    return {"n_feasible": len(states), "n_reached": len(seen), "connected": len(seen) == len(states),
-            "exchange_graph": "pairs_distance_1"}
+    return {
+        "n_feasible": len(states),
+        "n_reached": len(seen),
+        "connected": len(seen) == len(states),
+        "exchange_graph": "pairs_distance_1",
+    }
 
 
 def build_framework(spec, topology, decoration: dict) -> dict:
@@ -148,10 +177,14 @@ def build_framework(spec, topology, decoration: dict) -> dict:
 
     Physical projects use framework.build_framework (parent-substitution builder).
     """
-    return {"record_type": "BuildResult", "topology_id": topology.topology_id,
-            "decoration": decoration["configuration_id"], "geometry": None,
-            "status": StageStatus.SKIPPED_NO_ATOMIC_GEOMETRY.value,
-            "reason": "finite_substitution_interaction_graph mode; no CIF or building-block geometry supplied"}
+    return {
+        "record_type": "BuildResult",
+        "topology_id": topology.topology_id,
+        "decoration": decoration["configuration_id"],
+        "geometry": None,
+        "status": StageStatus.SKIPPED_NO_ATOMIC_GEOMETRY.value,
+        "reason": "finite_substitution_interaction_graph mode; no CIF or building-block geometry supplied",
+    }
 
 
 def screen_topologies(spec) -> dict:
@@ -159,12 +192,21 @@ def screen_topologies(spec) -> dict:
 
     Physical projects that declare ``protocols.ml_potential_checkpoint`` use the ML-potential screen (screening.py).
     """
-    #TODO: Task 01 — orientation diversity in the screening seeds needs linker orientation states (T01.4).
+    # TODO: Task 01 — orientation diversity in the screening seeds needs linker orientation states (T01.4).
     screen = spec.config["topology_screen"]
-    decisions = [{"topology_id": tid, "state": "retain", "evidence": "NO_PHYSICAL_SCREENING_EVIDENCE"}
-                 for tid in spec.topologies if tid in screen["retain"]]
+    decisions = [
+        {"topology_id": tid, "state": "retain", "evidence": "NO_PHYSICAL_SCREENING_EVIDENCE"}
+        for tid in spec.topologies
+        if tid in screen["retain"]
+    ]
     skipped = StageStatus.SKIPPED_NO_ATOMIC_GEOMETRY.value
-    return make_record("ScreeningReport", spec.provenance, mode=screen["mode"], decisions=decisions,
-                       geometric_screen=screen.get("geometric_screen", skipped),
-                       ml_potential=skipped if spec.physical is None else StageStatus.DISABLED_BY_CONFIG.value,
-                       exclusion_ledger=[], retained=[d["topology_id"] for d in decisions])
+    return make_record(
+        "ScreeningReport",
+        spec.provenance,
+        mode=screen["mode"],
+        decisions=decisions,
+        geometric_screen=screen.get("geometric_screen", skipped),
+        ml_potential=skipped if spec.physical is None else StageStatus.DISABLED_BY_CONFIG.value,
+        exclusion_ledger=[],
+        retained=[d["topology_id"] for d in decisions],
+    )

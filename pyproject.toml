@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=7"]
+test = ["pytest>=7"] # TODO move this to dev
 # protocols.dft.device = "gpu": pick the gpu4pyscf wheel matching the installed CUDA toolkit (cuda11x/cuda12x/...).
 gpu = ["gpu4pyscf-cuda12x>=1.8"]
 # Runtime agents (python -m qumof agents): OpenRouter requests, strict schemas, controls.yaml, LangGraph
@@ -38,6 +38,7 @@ aiida = ["aiida-core>=2.6"]
 dev = [
     "pyright>=1.1.414",
     "pytest-xdist>=3.8.0",
+    "ruff>=0.17.6",
 ]
 
 [tool.setuptools.packages.find]
@@ -51,7 +52,35 @@ markers = [
 ]
 
 [tool.pyright]
-typeCheckingMode = "basic" # takes precedence over "python.analysis.typeCheckingMode" in VS Code settings
 pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
+include = ["src"]
+exclude = ["**/__pycache__", "**/.venv", "notebooks", "third_party"]
+
+typeCheckingMode = "basic"           # takes precedence over "python.analysis.typeCheckingMode" in VS Code settings
+strict = []                          # add modules here as they're migrated
+
+reportUnnecessaryTypeIgnoreComment = "error" # flags stale ignores
+
+# TODO to add to readme "git config blame.ignoreRevsFile .git-blame-ignore-revs -- each dev runs this once"
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["graphify-out/", "docs/"]   # whatever shouldn't be touched
+
+[tool.ruff.lint]
+select = [
+  "E4", "E7", "E9", "F",   # ruff's defaults: real errors (undefined names, unused imports...)
+  "I",                     # import sorting
+  "UP",                    # modern syntax
+  "B",                     # bugbear: likely bugs
+  "SIM",                   # simplifications
+  "RUF",                   # ruff-specific, incl. RUF100 = flags stale noqa comments
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]   # re-exports look like unused imports
+
+[tool.ruff.format]
+docstring-code-format = true
