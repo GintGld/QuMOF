@@ -52,14 +52,20 @@ markers = [
 ]
 
 [tool.pyright]
-typeCheckingMode = "basic" # takes precedence over "python.analysis.typeCheckingMode" in VS Code settings
 pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
+include = ["src"]
+exclude = ["**/__pycache__", "**/.venv", "notebooks", "third_party"]
+
+typeCheckingMode = "basic"           # takes precedence over "python.analysis.typeCheckingMode" in VS Code settings
+strict = []                          # add modules here as they're migrated
+
+reportUnnecessaryTypeIgnoreComment = "error" # flags stale ignores
 
 # TODO to add to readme "git config blame.ignoreRevsFile .git-blame-ignore-revs -- each dev runs this once"
 [tool.ruff]
-target-version = "py312"        # match requires-python; UP fixes depend on this
+target-version = "py312"
 line-length = 100
 extend-exclude = ["graphify-out/", "docs/"]   # whatever shouldn't be touched
 
